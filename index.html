@@ -78,6 +78,8 @@ button:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline
 .primary{width:100%;margin-top:14px;background:var(--ink);color:var(--bg);font-size:1.05rem}
 .ghost{background:transparent;color:var(--muted);min-height:36px;padding:0 8px;font-weight:600;font-size:.85rem}
 .note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.secondary{width:100%;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-size:1rem}
+.stack{display:grid;gap:10px}
 .toast{font-size:.9rem;color:var(--good);font-weight:600;min-height:1.4em;margin-top:8px}
 
 /* Analysis rows */
@@ -184,6 +186,18 @@ details[open] summary{margin-bottom:14px}
   <section class="block">
     <h2>Your days</h2>
     <ul class="days" id="days"></ul>
+  </section>
+
+  <section class="block">
+    <h2>Backup</h2>
+    <div class="stack">
+      <button class="secondary" id="exportCsv">Export CSV</button>
+      <button class="secondary" id="downloadBackup">Download backup</button>
+      <button class="secondary" id="restoreBackup">Restore backup</button>
+    </div>
+    <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    <p class="note">Everything is saved on this phone only. Download a backup now and then so you don't lose your log if the phone is lost or the browser data gets cleared. Export CSV opens in Excel, Numbers or Google Sheets.</p>
+    <div class="toast" id="backupToast" aria-live="polite"></div>
   </section>
 </div>
 
@@ -399,6 +413,103 @@ details[open] summary{margin-bottom:14px}
         if ($("dDate").value === d) loadDayIntoForm(d);
       }
     }
+  });
+
+  // ---------- backup ----------
+  async function saveFile(name, type, text){
+    const blob = new Blob([text], {type});
+    // On phones the share sheet is the reliable way to get a file into Files / Drive / email.
+    try {
+      const file = new File([blob], name, {type});
+      if (matchMedia("(pointer:coarse)").matches && navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:name});
+        return true;
+      }
+    } catch(e){ if (e && e.name === "AbortError") return false; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+
+  const csvCell = v => { const t = String(v ?? ""); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t; };
+  const csvRow = cells => cells.map(csvCell).join(",");
+  const r2 = n => Math.round(n*100)/100;
+
+  function buildCsv(){
+    const a = analyze();
+    const lines = [csvRow(["Date","Cuts","Money made","Transport","Food","Day net"])];
+    a.days.forEach(([d, v]) => {
+      const made = num(v.made), tr = num(v.transport), fd = num(v.food);
+      lines.push(csvRow([d, num(v.cuts), r2(made), r2(tr), r2(fd), r2(made - tr - fd)]));
+    });
+    lines.push(csvRow(["Total", a.cuts, r2(a.earned), r2(a.transport), r2(a.food), r2(a.earned - a.transport - a.food)]));
+    lines.push("");
+    lines.push(csvRow(["Trip summary",""]));
+    const sum = [
+      ["First day", state.start], ["Last day", state.end],
+      ["Flight", r2(num(state.flight))],
+      ["Lodging per night", a.hasRate ? r2(a.rate) : ""],
+      ["Nights", a.nights],
+      ["Lodging total", r2(a.lodgingTotal)],
+      ["Other one-time costs", r2(num(state.other))],
+      ["Food per day (estimate)", state.estFood],
+      ["Transport per day (estimate)", state.estTransport],
+      ["Fixed costs", r2(a.fixed)],
+      ["Earned", r2(a.earned)],
+      ["Spent so far", r2(a.spentSoFar)],
+      ["Still to spend", r2(a.stillToSpend)],
+      ["Break-even goal", r2(a.goal)],
+      [a.gap > 0 ? "Still to go" : "Ahead by", r2(Math.abs(a.gap))],
+      ["Days logged", a.logged + " of " + a.totalDays],
+      ["Exported", todayISO]
+    ];
+    sum.forEach(row => lines.push(csvRow(row)));
+    return lines.join("\r\n") + "\r\n";
+  }
+
+  $("exportCsv").addEventListener("click", async () => {
+    $("backupToast").style.color = "";
+    if (await saveFile(`chair-count-${todayISO}.csv`, "text/csv", buildCsv())) flash("backupToast","CSV exported");
+  });
+
+  $("downloadBackup").addEventListener("click", async () => {
+    $("backupToast").style.color = "";
+    if (await saveFile(`chair-count-backup-${todayISO}.json`, "application/json", JSON.stringify(state, null, 2))) flash("backupToast","Backup downloaded");
+  });
+
+  $("restoreBackup").addEventListener("click", () => $("restoreFile").click());
+
+  function cleanBackup(raw){
+    if (!raw || typeof raw !== "object" || Array.isArray(raw) || !raw.days || typeof raw.days !== "object") return null;
+    const out = defaults();
+    ["start","end"].forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(raw[k] ?? "")) out[k] = raw[k]; });
+    ["flight","lodging","lodgingRate","nights","other","estFood","estTransport"].forEach(k => {
+      if (k in raw) out[k] = String(raw[k] ?? "") === "" ? "" : String(num(raw[k]));
+    });
+    Object.entries(raw.days).forEach(([d, v]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !v || typeof v !== "object") return;
+      out.days[d] = { cuts: num(v.cuts), made: num(v.made), transport: num(v.transport), food: num(v.food) };
+    });
+    return out;
+  }
+
+  $("restoreFile").addEventListener("change", async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    let next = null;
+    try { next = cleanBackup(JSON.parse(await file.text())); } catch(err){}
+    if (!next){ $("backupToast").style.color = "var(--red)"; flash("backupToast","That file isn't a Chair Count backup."); return; }
+    $("backupToast").style.color = "";
+    const n = Object.keys(next.days).length, cur = Object.keys(state.days).length;
+    if (!confirm(`Restore this backup? It has ${n} logged day${n===1?"":"s"} and will replace everything on this phone (${cur} logged day${cur===1?"":"s"}). This can't be undone.`)) return;
+    state = next;
+    persist();
+    fillCosts(); $("costsBox").open = !hasCosts(); loadDayIntoForm(todayISO); render();
+    flash("backupToast","Backup restored");
   });
 
   // ---------- boot ----------
