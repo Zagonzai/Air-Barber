@@ -109,7 +109,7 @@ details[open] summary{margin-bottom:14px}
 <div class="wrap">
   <header class="top">
     <h1>Boston chair count</h1>
-    <span class="sync" id="sync">Saved on this device</span>
+    <span class="sync" id="sync">Saved on this phone only</span>
   </header>
 
   <div class="hero">
@@ -198,18 +198,9 @@ details[open] summary{margin-bottom:14px}
   let state = defaults();
   try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(defaults(), JSON.parse(raw)); } catch(e){}
 
-  let dbDoc = null, saveTimer = null;
-
   function persist(){
     state.updatedAt = Date.now();
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
-    if (dbDoc){
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => {
-        try { await dbDoc.set(JSON.parse(JSON.stringify(state))); $("sync").textContent = "Saved to your account"; }
-        catch(e){ $("sync").textContent = "Saved on this device"; }
-      }, 400);
-    }
   }
 
   // ---------- math ----------
@@ -405,35 +396,8 @@ details[open] summary{margin-bottom:14px}
   // ---------- boot ----------
   fillCosts();
   $("costsBox").open = !hasCosts();
-  loadDayIntoForm(state.days[todayISO] ? todayISO : todayISO);
+  loadDayIntoForm(todayISO);
   render();
-
-  // Account sync (falls back to this device if unavailable)
-  (async () => {
-    try {
-      if (!window.claude || !window.claude.use) return;
-      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-      if (!db || !user) return;
-      const id = await user.id();
-      if (!id) return;
-      const ref = db.doc("data/users/" + id + "/boston-trip");
-      const snap = await ref.get();
-      dbDoc = ref;
-      if (snap.exists){
-        const remote = snap.data() || {};
-        if ((remote.updatedAt || 0) >= (state.updatedAt || 0)){
-          state = Object.assign(defaults(), JSON.parse(JSON.stringify(remote)));
-          try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
-          fillCosts(); $("costsBox").open = !hasCosts(); loadDayIntoForm($("dDate").value || todayISO); render();
-        } else {
-          await ref.set(JSON.parse(JSON.stringify(state)));
-        }
-      } else if (state.updatedAt){
-        await ref.set(JSON.parse(JSON.stringify(state)));
-      }
-      $("sync").textContent = "Saved to your account";
-    } catch(e){ dbDoc = dbDoc || null; }
-  })();
 })();
 </script>
 </body>
