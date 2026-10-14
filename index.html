@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boston Chair Count</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F6; --surface:#FFFFFF; --ink:#13213B; --muted:#5B6782; --line:#D5DBE6;
+  --red:#C8102E; --blue:#1D3E8A; --pole-white:#FFFFFF; --good:#137A4B; --track:#DDE3EE;
+  --display:"Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1729; --surface:#16223A; --ink:#EEF2FA; --muted:#97A3BD; --line:#2A3858;
+    --red:#E8334F; --blue:#5B82E0; --pole-white:#EEF2FA; --good:#3CC488; --track:#22304D;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1729; --surface:#16223A; --ink:#EEF2FA; --muted:#97A3BD; --line:#2A3858;
+  --red:#E8334F; --blue:#5B82E0; --pole-white:#EEF2FA; --good:#3CC488; --track:#22304D;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:20px 18px 48px}
+h1,h2{font-family:var(--display);font-weight:800;letter-spacing:.01em;margin:0;line-height:1.05}
+h1{font-size:1.5rem}
+h2{font-size:1.45rem;margin-bottom:12px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:22px}
+.top small{color:var(--muted);font-size:.85rem}
+.sync{font-size:.78rem;color:var(--muted)}
+
+/* Hero */
+.hero{margin-bottom:28px}
+.status{font-family:var(--display);font-weight:900;font-size:clamp(2.6rem,12vw,4rem);line-height:.95;margin:0}
+.status.win{color:var(--good)}
+.status-sub{color:var(--muted);margin:8px 0 18px;font-size:1rem}
+.pole{position:relative;height:34px;border-radius:17px;background:var(--track);overflow:hidden;border:2px solid var(--ink)}
+.pole-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:15px 0 0 15px;
+  background:repeating-linear-gradient(-55deg,var(--red) 0 14px,var(--pole-white) 14px 24px,var(--blue) 24px 38px,var(--pole-white) 38px 48px);
+  background-size:96px 100%;transition:width .7s cubic-bezier(.2,.8,.2,1);animation:spin 2.4s linear infinite}
+.pole-fill.full{border-radius:15px}
+@keyframes spin{to{background-position:96px 0}}
+@media (prefers-reduced-motion:reduce){.pole-fill{animation:none;transition:none}}
+.pole-legend{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);margin-top:8px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.trio div{background:var(--surface);border-radius:12px;padding:10px 12px}
+.trio b{display:block;font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1.1}
+.trio span{font-size:.8rem;color:var(--muted)}
+
+section.block{background:var(--surface);border-radius:18px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:4px}
+input{width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px}
+input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 30%,transparent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2 .span{grid-column:1/-1}
+.money{position:relative}
+.money::before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.money input{padding-left:26px}
+button{font:inherit;cursor:pointer;border-radius:12px;border:0;min-height:48px;padding:0 18px;font-weight:700}
+button:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.primary{width:100%;margin-top:14px;background:var(--ink);color:var(--bg);font-size:1.05rem}
+.ghost{background:transparent;color:var(--muted);min-height:36px;padding:0 8px;font-weight:600;font-size:.85rem}
+.note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.toast{font-size:.9rem;color:var(--good);font-weight:600;min-height:1.4em;margin-top:8px}
+
+/* Analysis rows */
+.rows{margin:0}
+.rows div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-top:1px solid var(--line)}
+.rows div:first-child{border-top:0;padding-top:0}
+.rows dt{color:var(--muted)}
+.rows dd{margin:0;font-weight:700;text-align:right;white-space:nowrap}
+.rows dd.neg{color:var(--red)} .rows dd.pos{color:var(--good)}
+
+/* Chart */
+.chart-wrap{overflow-x:auto}
+svg text{font-family:var(--body);fill:var(--muted);font-size:11px}
+.key{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:8px}
+.key i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+
+/* Days list */
+.days{list-style:none;margin:0;padding:0}
+.days li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.days li:first-child{border-top:0}
+.date-chip{font-family:var(--display);font-weight:800;font-size:1.15rem;line-height:1;text-align:center;min-width:44px}
+.date-chip small{display:block;font-family:var(--body);font-size:.7rem;font-weight:600;color:var(--muted)}
+.day-main{font-size:.95rem}
+.day-main .sub{display:block;color:var(--muted);font-size:.82rem}
+.day-net{font-weight:700;text-align:right}
+.day-actions{grid-column:2/-1;display:flex;gap:4px;justify-content:flex-end;margin-top:-4px}
+.empty{color:var(--muted);margin:0}
+
+details summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+details summary::-webkit-details-marker{display:none}
+details summary h2{margin:0}
+details summary .chev{color:var(--muted);font-size:.9rem;font-weight:600}
+details[open] summary{margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Boston chair count</h1>
+    <span class="sync" id="sync">Saved on this device</span>
+  </header>
+
+  <div class="hero">
+    <p class="status" id="status">$0 to go</p>
+    <p class="status-sub" id="statusSub">Add your trip costs to set the break-even line.</p>
+    <div class="pole" role="progressbar" aria-label="Earnings toward break-even" aria-valuemin="0" aria-valuemax="100" id="pole">
+      <div class="pole-fill" id="poleFill"></div>
+    </div>
+    <div class="pole-legend"><span id="legendLeft">$0 earned</span><span id="legendRight">Break even at $0</span></div>
+    <div class="trio">
+      <div><b id="tEarned">$0</b><span>Earned</span></div>
+      <div><b id="tCost">$0</b><span>Trip cost</span></div>
+      <div><b id="tCuts">0</b><span>Cuts</span></div>
+    </div>
+  </div>
+
+  <section class="block">
+    <details id="costsBox">
+      <summary><h2>Trip costs</h2><span class="chev" id="costsChev">Edit</span></summary>
+      <div class="grid2">
+        <div><label for="start">First day</label><input type="date" id="start"></div>
+        <div><label for="end">Last day</label><input type="date" id="end"></div>
+        <div><label for="flight">Flight</label><div class="money"><input id="flight" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="lodgingRate">Lodging per night</label><div class="money"><input id="lodgingRate" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="nights">Nights</label><input id="nights" inputmode="numeric" placeholder="0"></div>
+        <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="estFood">Food per day (estimate)</label><div class="money"><input id="estFood" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="estTransport">Transport per day (estimate)</label><div class="money"><input id="estTransport" inputmode="decimal" placeholder="0"></div></div>
+      </div>
+      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights fills in from your dates; type a number to override it. Put chair rent or supplies under other one-time costs.</p>
+      <button class="primary" id="saveCosts">Save trip costs</button>
+      <div class="toast" id="costsToast" aria-live="polite"></div>
+    </details>
+  </section>
+
+  <section class="block">
+    <h2 id="logTitle">Log a day</h2>
+    <div class="grid2">
+      <div class="span"><label for="dDate">Date</label><input type="date" id="dDate"></div>
+      <div><label for="dCuts">Cuts</label><input id="dCuts" inputmode="numeric" placeholder="0"></div>
+      <div><label for="dMade">Money made</label><div class="money"><input id="dMade" inputmode="decimal" placeholder="0"></div></div>
+      <div><label for="dTransport">Transport</label><div class="money"><input id="dTransport" inputmode="decimal" placeholder="0"></div></div>
+      <div><label for="dFood">Food</label><div class="money"><input id="dFood" inputmode="decimal" placeholder="0"></div></div>
+    </div>
+    <button class="primary" id="saveDay">Save day</button>
+    <div class="toast" id="dayToast" aria-live="polite"></div>
+  </section>
+
+  <section class="block">
+    <h2>Where you stand</h2>
+    <dl class="rows" id="rows"></dl>
+  </section>
+
+  <section class="block">
+    <h2>Money in vs. money out</h2>
+    <div class="chart-wrap" id="chart"></div>
+    <div class="key">
+      <span><i style="background:var(--blue)"></i>Earned so far</span>
+      <span><i style="background:var(--red)"></i>Spent so far</span>
+      <span><i style="background:var(--muted)"></i>Break-even line</span>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Your days</h2>
+    <ul class="days" id="days"></ul>
+  </section>
+</div>
+
+<script>
+(function(){
+  const LS_KEY = "boston-cut-tracker-v1";
+  const $ = id => document.getElementById(id);
+  const fmt = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
+  const fmt2 = n => (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = v => { const n = parseFloat(String(v ?? "").replace(/[$,\s]/g,"")); return isFinite(n) ? n : 0; };
+  const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+  const todayISO = iso(new Date());
+
+  function defaults(){
+    const s = new Date(); const e = new Date(); e.setDate(e.getDate()+29);
+    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", other:"", estFood:"", estTransport:"", days:{}, updatedAt:0};
+  }
+
+  let state = defaults();
+  try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(defaults(), JSON.parse(raw)); } catch(e){}
+
+  let dbDoc = null, saveTimer = null;
+
+  function persist(){
+    state.updatedAt = Date.now();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
+    if (dbDoc){
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try { await dbDoc.set(JSON.parse(JSON.stringify(state))); $("sync").textContent = "Saved to your account"; }
+        catch(e){ $("sync").textContent = "Saved on this device"; }
+      }, 400);
+    }
+  }
+
+  // ---------- math ----------
+  function tripDates(){
+    const out = [];
+    if (!state.start || !state.end) return out;
+    const s = parse(state.start), e = parse(state.end);
+    if (e < s) return out;
+    for (let d = new Date(s); d <= e && out.length < 400; d.setDate(d.getDate()+1)) out.push(iso(d));
+    return out;
+  }
+
+  function analyze(){
+    const days = Object.entries(state.days).sort((a,b) => a[0] < b[0] ? -1 : 1);
+    const nightsAuto = (state.start && state.end && state.end >= state.start) ? Math.round((parse(state.end) - parse(state.start)) / 86400000) : 0;
+    const nights = String(state.nights ?? "") !== "" ? num(state.nights) : nightsAuto;
+    const hasRate = String(state.lodgingRate ?? "") !== "";
+    const lodgingTotal = hasRate ? num(state.lodgingRate) * nights : num(state.lodging);
+    const fixed = num(state.flight) + lodgingTotal + num(state.other);
+    let earned = 0, cuts = 0, food = 0, transport = 0;
+    days.forEach(([,d]) => { earned += num(d.made); cuts += num(d.cuts); food += num(d.food); transport += num(d.transport); });
+    const logged = days.length;
+    const all = tripDates();
+    const remaining = all.filter(d => d >= todayISO && !state.days[d]).length;
+    const avgFood = logged ? food/logged : 0, avgTransport = logged ? transport/logged : 0;
+    const estDaily = (state.estFood !== "" ? num(state.estFood) : avgFood) + (state.estTransport !== "" ? num(state.estTransport) : avgTransport);
+    const spentSoFar = fixed + food + transport;
+    const stillToSpend = remaining * estDaily;
+    const goal = spentSoFar + stillToSpend;
+    const gap = goal - earned;
+    const perCut = cuts ? earned/cuts : 0;
+    const perDay = logged ? earned/logged : 0;
+    const projectedEarned = earned + perDay*remaining;
+    return {days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
+  }
+
+  // ---------- render ----------
+  function render(){
+    const a = analyze();
+    $("nights").placeholder = String(a.nightsAuto);
+    const pct = a.goal > 0 ? Math.min(100, a.earned / a.goal * 100) : (a.earned > 0 ? 100 : 0);
+    const fill = $("poleFill");
+    fill.style.width = pct + "%";
+    fill.classList.toggle("full", pct >= 99.5);
+    $("pole").setAttribute("aria-valuenow", Math.round(pct));
+
+    const status = $("status"), sub = $("statusSub");
+    if (a.goal <= 0 && a.earned === 0){
+      status.textContent = "Set your costs"; status.classList.remove("win");
+      sub.textContent = "Add your flight, lodging and daily estimates to set the break-even line.";
+    } else if (a.gap > 0){
+      status.textContent = fmt(a.gap) + " to go"; status.classList.remove("win");
+      const cutsTxt = a.perCut ? ` That's about ${Math.ceil(a.gap/a.perCut)} more cuts at your average.` : "";
+      sub.textContent = `Until the cutting pays for the whole trip.${cutsTxt}`;
+    } else {
+      status.textContent = "Up " + fmt(-a.gap); status.classList.add("win");
+      sub.textContent = "You've covered every dollar this trip costs, including what's still to spend. Everything from here is profit.";
+    }
+    $("legendLeft").textContent = fmt(a.earned) + " earned";
+    $("legendRight").textContent = "Break even at " + fmt(a.goal);
+    $("tEarned").textContent = fmt(a.earned);
+    $("tCost").textContent = fmt(a.goal);
+    $("tCuts").textContent = a.cuts.toLocaleString("en-US");
+
+    // rows
+    const rows = [];
+    const add = (k, v, cls) => rows.push(`<div><dt>${k}</dt><dd${cls?` class="${cls}"`:""}>${v}</dd></div>`);
+    add("Spent so far", fmt(a.spentSoFar));
+    add("Flight", fmt(num(state.flight)));
+    add(a.hasRate ? `Lodging (${a.nights} nights × ${fmt2(a.rate)})` : "Lodging", fmt(a.lodgingTotal));
+    if (a.hasRate && a.nights) add("Every $5/night off lodging saves", fmt(5 * a.nights), "pos");
+    if (num(state.other)) add("Other one-time costs", fmt(num(state.other)));
+    add("Food logged", fmt(a.food));
+    add("Transport logged", fmt(a.transport));
+    add(`Still to spend (${a.remaining} days × ${fmt(a.estDaily)})`, fmt(a.stillToSpend));
+    add("Net right now (earned − spent so far)", fmt(a.earned - a.spentSoFar), a.earned - a.spentSoFar >= 0 ? "pos" : "neg");
+    add("Average per cut", a.perCut ? fmt2(a.perCut) : "—");
+    add("Average per day logged", a.logged ? fmt(a.perDay) : "—");
+    add("Average cuts per day", a.logged ? (a.cuts/a.logged).toFixed(1) : "—");
+    if (a.gap > 0){
+      add("Cuts needed to break even", a.perCut ? Math.ceil(a.gap/a.perCut).toLocaleString("en-US") : "—");
+      add("Needed per remaining day", a.remaining ? fmt(a.gap/a.remaining) : "No days left", a.remaining ? "" : "neg");
+      if (a.remaining && a.perCut) add("Cuts per remaining day", (a.gap/a.perCut/a.remaining).toFixed(1));
+    }
+    add("Days logged", `${a.logged} of ${a.totalDays}`);
+    add("Projected end of trip (at your pace)", a.logged ? (a.projectedNet >= 0 ? "+" : "") + fmt(a.projectedNet) : "Log a day first", a.logged ? (a.projectedNet >= 0 ? "pos" : "neg") : "");
+    $("rows").innerHTML = rows.join("");
+
+    renderChart(a);
+    renderDays(a);
+  }
+
+  function renderChart(a){
+    const el = $("chart");
+    if (!a.all.length){ el.innerHTML = '<p class="empty">Set your first and last day to see the chart.</p>'; return; }
+    const W = 600, H = 220, pl = 46, pr = 10, pt = 12, pb = 26;
+    const n = a.all.length;
+    let ce = 0, cs = a.fixed; const earnPts = [], spendPts = [];
+    let lastIdx = -1;
+    a.all.forEach((d, i) => {
+      const day = state.days[d];
+      if (day){ ce += num(day.made); cs += num(day.food) + num(day.transport); lastIdx = i; }
+      if (d <= todayISO || day){ earnPts.push([i, ce]); spendPts.push([i, cs]); }
+    });
+    const maxY = Math.max(a.goal, ce, cs, 100) * 1.08;
+    const x = i => pl + (n === 1 ? (W-pl-pr)/2 : i * (W-pl-pr)/(n-1));
+    const y = v => pt + (H-pt-pb) * (1 - v/maxY);
+    const path = pts => pts.map((p,i) => (i?"L":"M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+    let grid = "";
+    for (let k = 0; k <= 4; k++){
+      const v = maxY*k/4, yy = y(v).toFixed(1);
+      grid += `<line x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
+      grid += `<text x="${pl-6}" y="${+yy+4}" text-anchor="end">${v >= 1000 ? "$"+(v/1000).toFixed(1)+"k" : "$"+Math.round(v)}</text>`;
+    }
+    const ticks = [0, Math.floor((n-1)/2), n-1].filter((v,i,arr) => arr.indexOf(v) === i);
+    const lbl = d => { const dt = parse(d); return dt.toLocaleDateString("en-US",{month:"short",day:"numeric"}); };
+    ticks.forEach(i => { grid += `<text x="${x(i)}" y="${H-6}" text-anchor="${i===0?"start":i===n-1?"end":"middle"}">${lbl(a.all[i])}</text>`; });
+    const gy = y(a.goal).toFixed(1);
+    const goalLine = a.goal > 0 ? `<line x1="${pl}" x2="${W-pr}" y1="${gy}" y2="${gy}" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 5"/>` : "";
+    const lines = earnPts.length ? `<path d="${path(spendPts)}" fill="none" stroke="var(--red)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${path(earnPts)}" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>` : "";
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:320px;display:block" role="img" aria-label="Cumulative earnings versus spending across the trip">${grid}${goalLine}${lines}</svg>`;
+  }
+
+  function renderDays(a){
+    const ul = $("days");
+    if (!a.days.length){ ul.innerHTML = '<li style="display:block"><p class="empty">No days yet. Log your first day above and the numbers start working.</p></li>'; return; }
+    ul.innerHTML = a.days.slice().reverse().map(([d, v]) => {
+      const dt = parse(d);
+      const net = num(v.made) - num(v.food) - num(v.transport);
+      const per = num(v.cuts) ? fmt2(num(v.made)/num(v.cuts)) + "/cut" : "";
+      return `<li>
+        <div class="date-chip">${dt.getDate()}<small>${dt.toLocaleDateString("en-US",{month:"short"})} · ${dt.toLocaleDateString("en-US",{weekday:"short"})}</small></div>
+        <div class="day-main">${num(v.cuts)} cuts · ${fmt(num(v.made))}${per ? " · "+per : ""}
+          <span class="sub">Food ${fmt(num(v.food))} · Transport ${fmt(num(v.transport))}</span></div>
+        <div class="day-net" style="color:${net>=0?"var(--good)":"var(--red)"}">${net>=0?"+":""}${fmt(net)}</div>
+        <div class="day-actions"><button class="ghost" data-edit="${d}">Edit</button><button class="ghost" data-del="${d}">Delete</button></div>
+      </li>`;
+    }).join("");
+  }
+
+  // ---------- forms ----------
+  const costFields = ["start","end","flight","lodgingRate","nights","other","estFood","estTransport"];
+  function fillCosts(){ costFields.forEach(k => $(k).value = state[k] ?? ""); }
+  function hasCosts(){ return num(state.flight) || num(state.lodging) || num(state.other); }
+
+  function flash(id, msg){ const t = $(id); t.textContent = msg; clearTimeout(t._t); t._t = setTimeout(() => t.textContent = "", 2500); }
+
+  $("saveCosts").addEventListener("click", () => {
+    if ($("start").value && $("end").value && $("end").value < $("start").value){ flash("costsToast","Last day has to be on or after the first day."); $("costsToast").style.color="var(--red)"; return; }
+    $("costsToast").style.color = "";
+    costFields.forEach(k => {
+      const v = $(k).value.trim();
+      state[k] = (k === "start" || k === "end") ? v : (v === "" ? "" : String(num(v)));
+    });
+    persist(); render(); flash("costsToast","Trip costs saved");
+    $("costsBox").open = false;
+  });
+
+  function loadDayIntoForm(d){
+    const v = state.days[d] || {};
+    $("dDate").value = d;
+    $("dCuts").value = v.cuts ?? ""; $("dMade").value = v.made ?? "";
+    $("dTransport").value = v.transport ?? ""; $("dFood").value = v.food ?? "";
+    $("logTitle").textContent = state.days[d] ? "Edit day" : "Log a day";
+  }
+  $("dDate").addEventListener("change", e => { if (e.target.value) loadDayIntoForm(e.target.value); });
+
+  $("saveDay").addEventListener("click", () => {
+    const d = $("dDate").value;
+    if (!d){ $("dayToast").style.color="var(--red)"; flash("dayToast","Pick a date first."); return; }
+    $("dayToast").style.color = "";
+    const existed = !!state.days[d];
+    state.days[d] = { cuts: num($("dCuts").value), made: num($("dMade").value), transport: num($("dTransport").value), food: num($("dFood").value) };
+    persist(); render();
+    flash("dayToast", existed ? "Day updated" : "Day saved");
+    const next = parse(d); next.setDate(next.getDate()+1);
+    loadDayIntoForm(iso(next));
+  });
+
+  $("days").addEventListener("click", e => {
+    const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+    if (ed){ loadDayIntoForm(ed.dataset.edit); $("dDate").scrollIntoView({behavior:"smooth", block:"center"}); }
+    if (del){
+      const d = del.dataset.del;
+      if (confirm("Delete " + parse(d).toLocaleDateString("en-US",{month:"short",day:"numeric"}) + "?")){
+        delete state.days[d]; persist(); render();
+        if ($("dDate").value === d) loadDayIntoForm(d);
+      }
+    }
+  });
+
+  // ---------- boot ----------
+  fillCosts();
+  $("costsBox").open = !hasCosts();
+  loadDayIntoForm(state.days[todayISO] ? todayISO : todayISO);
+  render();
+
+  // Account sync (falls back to this device if unavailable)
+  (async () => {
+    try {
+      if (!window.claude || !window.claude.use) return;
+      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (!db || !user) return;
+      const id = await user.id();
+      if (!id) return;
+      const ref = db.doc("data/users/" + id + "/boston-trip");
+      const snap = await ref.get();
+      dbDoc = ref;
+      if (snap.exists){
+        const remote = snap.data() || {};
+        if ((remote.updatedAt || 0) >= (state.updatedAt || 0)){
+          state = Object.assign(defaults(), JSON.parse(JSON.stringify(remote)));
+          try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
+          fillCosts(); $("costsBox").open = !hasCosts(); loadDayIntoForm($("dDate").value || todayISO); render();
+        } else {
+          await ref.set(JSON.parse(JSON.stringify(state)));
+        }
+      } else if (state.updatedAt){
+        await ref.set(JSON.parse(JSON.stringify(state)));
+      }
+      $("sync").textContent = "Saved to your account";
+    } catch(e){ dbDoc = dbDoc || null; }
+  })();
+})();
+</script>
+</body>
+</html>
