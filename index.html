@@ -58,8 +58,13 @@ h2{font-size:1.45rem;margin-bottom:12px}
   background-size:96px 100%;transition:width .7s cubic-bezier(.2,.8,.2,1);animation:spin 2.4s linear infinite}
 .pole-fill.full{border-radius:15px}
 @keyframes spin{to{background-position:96px 0}}
-@media (prefers-reduced-motion:reduce){.pole-fill{animation:none;transition:none}}
+@media (prefers-reduced-motion:reduce){.pole-fill,.goal-fill{animation:none;transition:none}}
 .pole-legend{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);margin-top:8px}
+.goal{margin-top:16px}
+.goalbar{position:relative;height:14px;border-radius:7px;background:var(--track);border:2px solid var(--ink)}
+.goal-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:5px;background:var(--good);transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.goal-mark{position:absolute;top:-7px;bottom:-7px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink)}
+.mark-key{display:inline-block;width:3px;height:.95em;border-radius:2px;background:var(--ink);vertical-align:-2px;margin-right:5px}
 .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
 .trio div{background:var(--surface);border-radius:12px;padding:10px 12px}
 .trio b{display:block;font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1.1}
@@ -134,6 +139,13 @@ details[open] summary{margin-bottom:14px}
       <div class="pole-fill" id="poleFill"></div>
     </div>
     <div class="pole-legend"><span id="legendLeft">$0 earned</span><span id="legendRight">Break even at $0</span></div>
+    <div class="goal" id="goalHero" hidden>
+      <div class="goalbar" role="progressbar" aria-label="Earnings toward profit goal" aria-valuemin="0" aria-valuemax="100" id="goalBar">
+        <div class="goal-fill" id="goalFill"></div>
+        <div class="goal-mark" id="goalMark"></div>
+      </div>
+      <div class="pole-legend"><span id="goalLeft">$0 of $0 goal</span><span><i class="mark-key"></i><span id="goalRight">Break-even $0</span></span></div>
+    </div>
     <div class="trio">
       <div><b id="tEarned">$0</b><span>Earned</span></div>
       <div><b id="tCost">$0</b><span>Trip cost</span></div>
@@ -153,8 +165,9 @@ details[open] summary{margin-bottom:14px}
         <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="estFood">Food per day (estimate)</label><div class="money"><input id="estFood" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="estTransport">Transport per day (estimate)</label><div class="money"><input id="estTransport" inputmode="decimal" placeholder="0"></div></div>
+        <div class="span"><label for="profitGoal">Profit goal (take-home after every cost)</label><div class="money"><input id="profitGoal" inputmode="decimal" placeholder="Leave blank for no goal"></div></div>
       </div>
-      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights fills in from your dates; type a number to override it. Put chair rent or supplies under other one-time costs.</p>
+      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights fills in from your dates; type a number to override it. Put chair rent or supplies under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
       <button class="primary" id="saveCosts">Save trip costs</button>
       <div class="toast" id="costsToast" aria-live="polite"></div>
     </details>
@@ -185,6 +198,7 @@ details[open] summary{margin-bottom:14px}
       <span><i style="background:var(--blue)"></i>Earned so far</span>
       <span><i style="background:var(--red)"></i>Spent so far</span>
       <span><i style="background:var(--muted)"></i>Break-even line</span>
+      <span id="goalKey" hidden><i style="background:var(--good)"></i>Goal line</span>
     </div>
   </section>
 
@@ -219,7 +233,7 @@ details[open] summary{margin-bottom:14px}
 
   function defaults(){
     const s = new Date(); const e = new Date(); e.setDate(e.getDate()+29);
-    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", other:"", estFood:"", estTransport:"", days:{}, updatedAt:0};
+    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
   }
 
   let state = defaults();
@@ -261,7 +275,9 @@ details[open] summary{margin-bottom:14px}
     const perCut = cuts ? earned/cuts : 0;
     const perDay = logged ? earned/logged : 0;
     const projectedEarned = earned + perDay*remaining;
-    return {days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
+    const profitGoal = num(state.profitGoal), hasGoal = String(state.profitGoal ?? "") !== "" && profitGoal > 0;
+    const goalTarget = goal + profitGoal, goalGap = goalTarget - earned;
+    return {profitGoal, hasGoal, goalTarget, goalGap, days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
   }
 
   // ---------- render ----------
@@ -288,6 +304,15 @@ details[open] summary{margin-bottom:14px}
     }
     $("legendLeft").textContent = fmt(a.earned) + " earned";
     $("legendRight").textContent = "Break even at " + fmt(a.goal);
+    $("goalHero").hidden = !a.hasGoal;
+    if (a.hasGoal){
+      const gp = a.goalTarget > 0 ? Math.min(100, a.earned / a.goalTarget * 100) : 100;
+      $("goalFill").style.width = gp + "%";
+      $("goalBar").setAttribute("aria-valuenow", Math.round(gp));
+      $("goalMark").style.left = (a.goalTarget > 0 ? Math.max(0, a.goal) / a.goalTarget * 100 : 0) + "%";
+      $("goalLeft").textContent = fmt(a.earned) + " of " + fmt(a.goalTarget) + " goal";
+      $("goalRight").textContent = "Break-even " + fmt(a.goal);
+    }
     $("tEarned").textContent = fmt(a.earned);
     $("tCost").textContent = fmt(a.goal);
     $("tCuts").textContent = a.cuts.toLocaleString("en-US");
@@ -314,6 +339,21 @@ details[open] summary{margin-bottom:14px}
     }
     add("Days logged", `${a.logged} of ${a.totalDays}`);
     add("Projected end of trip (at your pace)", a.logged ? (a.projectedNet >= 0 ? "+" : "") + fmt(a.projectedNet) : "Log a day first", a.logged ? (a.projectedNet >= 0 ? "pos" : "neg") : "");
+    if (a.hasGoal){
+      add(`Goal target (break-even + ${fmt(a.profitGoal)} profit)`, fmt(a.goalTarget));
+      if (a.goalGap > 0){
+        add("Left to reach goal", fmt(a.goalGap));
+        add("Needed per remaining day to hit goal", a.remaining ? fmt(a.goalGap/a.remaining) : "No days left", a.remaining ? "" : "neg");
+        add("Cuts needed to hit goal", a.perCut ? Math.ceil(a.goalGap/a.perCut).toLocaleString("en-US") : "—");
+      } else {
+        add("Left to reach goal", "Goal reached", "pos");
+      }
+      if (!a.logged) add("Projected profit vs. goal", "Log a day first");
+      else {
+        const diff = a.projectedNet - a.profitGoal;
+        add(`Projected profit vs. ${fmt(a.profitGoal)} goal`, diff >= 0 ? "On track" : "Behind by " + fmt(-diff), diff >= 0 ? "pos" : "neg");
+      }
+    }
     $("rows").innerHTML = rows.join("");
 
     renderChart(a);
@@ -332,7 +372,7 @@ details[open] summary{margin-bottom:14px}
       if (day){ ce += num(day.made); cs += num(day.food) + num(day.transport); lastIdx = i; }
       if (d <= todayISO || day){ earnPts.push([i, ce]); spendPts.push([i, cs]); }
     });
-    const maxY = Math.max(a.goal, ce, cs, 100) * 1.08;
+    const maxY = Math.max(a.goal, a.hasGoal ? a.goalTarget : 0, ce, cs, 100) * 1.08;
     const x = i => pl + (n === 1 ? (W-pl-pr)/2 : i * (W-pl-pr)/(n-1));
     const y = v => pt + (H-pt-pb) * (1 - v/maxY);
     const path = pts => pts.map((p,i) => (i?"L":"M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
@@ -347,9 +387,12 @@ details[open] summary{margin-bottom:14px}
     ticks.forEach(i => { grid += `<text x="${x(i)}" y="${H-6}" text-anchor="${i===0?"start":i===n-1?"end":"middle"}">${lbl(a.all[i])}</text>`; });
     const gy = y(a.goal).toFixed(1);
     const goalLine = a.goal > 0 ? `<line x1="${pl}" x2="${W-pr}" y1="${gy}" y2="${gy}" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 5"/>` : "";
+    const ty = y(a.goalTarget).toFixed(1);
+    const targetLine = a.hasGoal ? `<line x1="${pl}" x2="${W-pr}" y1="${ty}" y2="${ty}" stroke="var(--good)" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>` : "";
+    $("goalKey").hidden = !a.hasGoal;
     const lines = earnPts.length ? `<path d="${path(spendPts)}" fill="none" stroke="var(--red)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
       <path d="${path(earnPts)}" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>` : "";
-    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:320px;display:block" role="img" aria-label="Cumulative earnings versus spending across the trip">${grid}${goalLine}${lines}</svg>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:320px;display:block" role="img" aria-label="Cumulative earnings versus spending across the trip">${grid}${goalLine}${targetLine}${lines}</svg>`;
   }
 
   function renderDays(a){
@@ -370,7 +413,7 @@ details[open] summary{margin-bottom:14px}
   }
 
   // ---------- forms ----------
-  const costFields = ["start","end","flight","lodgingRate","nights","other","estFood","estTransport"];
+  const costFields = ["start","end","flight","lodgingRate","nights","other","estFood","estTransport","profitGoal"];
   function fillCosts(){ costFields.forEach(k => $(k).value = state[k] ?? ""); }
   function hasCosts(){ return num(state.flight) || num(state.lodging) || num(state.other); }
 
@@ -468,6 +511,9 @@ details[open] summary{margin-bottom:14px}
       ["Still to spend", r2(a.stillToSpend)],
       ["Break-even goal", r2(a.goal)],
       [a.gap > 0 ? "Still to go" : "Ahead by", r2(Math.abs(a.gap))],
+      ["Profit goal", a.hasGoal ? r2(a.profitGoal) : ""],
+      ["Goal target", a.hasGoal ? r2(a.goalTarget) : ""],
+      ["Left to reach goal", a.hasGoal ? r2(Math.max(0, a.goalGap)) : ""],
       ["Days logged", a.logged + " of " + a.totalDays],
       ["Exported", todayISO]
     ];
@@ -491,7 +537,7 @@ details[open] summary{margin-bottom:14px}
     if (!raw || typeof raw !== "object" || Array.isArray(raw) || !raw.days || typeof raw.days !== "object") return null;
     const out = defaults();
     ["start","end"].forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(raw[k] ?? "")) out[k] = raw[k]; });
-    ["flight","lodging","lodgingRate","nights","other","estFood","estTransport"].forEach(k => {
+    ["flight","lodging","lodgingRate","nights","other","estFood","estTransport","profitGoal"].forEach(k => {
       if (k in raw) out[k] = String(raw[k] ?? "") === "" ? "" : String(num(raw[k]));
     });
     Object.entries(raw.days).forEach(([d, v]) => {
