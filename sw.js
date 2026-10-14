@@ -1,6 +1,6 @@
 // Offline cache for Boston Chair Count.
 // Bump CACHE whenever app files change so phones pick up the new version.
-const CACHE = "chair-count-v3";
+const CACHE = "chair-count-v4";
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600;700&display=swap";
 const APP_FILES = [
   "./",
