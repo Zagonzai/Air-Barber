@@ -70,6 +70,24 @@ h2{font-size:1.45rem;margin-bottom:12px}
 .trio b{display:block;font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1.1}
 .trio span{font-size:.8rem;color:var(--muted)}
 
+/* Tap counter */
+.counter{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px;align-items:center}
+.count-label{display:block;font-size:.85rem;font-weight:600;color:var(--muted)}
+.count-line{display:flex;align-items:baseline;gap:8px;line-height:1}
+.count-num{display:inline-block;font-family:var(--display);font-weight:900;font-size:3.6rem;line-height:.95;font-variant-numeric:tabular-nums}
+.count-unit{font-family:var(--display);font-weight:800;font-size:1.4rem}
+.count-num.bump{animation:bump .3s ease-out}
+@keyframes bump{40%{transform:scale(1.25);color:var(--good)}}
+.tap{width:100%;min-height:104px;background:var(--ink);color:var(--bg);font-family:var(--display);font-weight:900;font-size:2.1rem;letter-spacing:.01em;border-radius:18px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:transform .08s}
+.tap:active{transform:scale(.96)}
+.tap.pulse{animation:pulse .45s ease-out}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 70%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+.minus{margin-top:10px;min-height:44px;padding:0 16px;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-size:1rem;touch-action:manipulation}
+.minus:disabled{opacity:.4;cursor:default}
+.counter-note{margin:12px 0 0}
+.counter-note:empty{display:none}
+@media (prefers-reduced-motion:reduce){.count-num.bump,.tap.pulse{animation:none}.tap{transition:none}}
+
 section.block{background:var(--surface);border-radius:18px;padding:18px;margin-bottom:16px}
 label{display:block;font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:4px}
 input{display:block;width:100%;min-width:0;max-width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px}
@@ -152,6 +170,18 @@ details[open] summary{margin-bottom:14px}
       <div><b id="tCuts">0</b><span>Cuts</span></div>
     </div>
   </div>
+
+  <section class="block" aria-label="Cut counter">
+    <div class="counter">
+      <div>
+        <span class="count-label">Today</span>
+        <div class="count-line" aria-live="polite"><b class="count-num" id="cCount">0</b><span class="count-unit" id="cUnit">cuts</span></div>
+        <button class="minus" id="cMinus" aria-label="Take one cut off today">−1</button>
+      </div>
+      <button class="tap" id="cPlus">+1 Cut</button>
+    </div>
+    <p class="note counter-note" id="cNote"></p>
+  </section>
 
   <section class="block">
     <details id="costsBox">
@@ -271,7 +301,9 @@ details[open] summary{margin-bottom:14px}
   }
 
   function analyze(){
-    const days = Object.entries(state.days).sort((a,b) => a[0] < b[0] ? -1 : 1);
+    // Days started by the tap counter stay "draft" (in progress) until saved in Log a day,
+    // so a half-finished day doesn't drag the averages or the break-even line around.
+    const days = Object.entries(state.days).filter(([,d]) => !d.draft).sort((a,b) => a[0] < b[0] ? -1 : 1);
     const nightsAuto = (state.start && state.end && state.end >= state.start) ? Math.round((parse(state.end) - parse(state.start)) / 86400000) : 0;
     const nights = String(state.nights ?? "") !== "" ? num(state.nights) : nightsAuto;
     const hasRate = String(state.lodgingRate ?? "") !== "";
@@ -285,7 +317,7 @@ details[open] summary{margin-bottom:14px}
     days.forEach(([,d]) => { earned += num(d.made); cuts += num(d.cuts); food += num(d.food); transport += num(d.transport); });
     const logged = days.length;
     const all = tripDates();
-    const remaining = all.filter(d => d >= todayISO && !state.days[d]).length;
+    const remaining = all.filter(d => d >= todayISO && !(state.days[d] && !state.days[d].draft)).length;
     const avgFood = logged ? food/logged : 0, avgTransport = logged ? transport/logged : 0;
     const estDaily = (state.estFood !== "" ? num(state.estFood) : avgFood) + (state.estTransport !== "" ? num(state.estTransport) : avgTransport);
     const spentSoFar = fixed + food + transport;
@@ -391,6 +423,7 @@ details[open] summary{margin-bottom:14px}
 
     renderChart(a);
     renderDays(a);
+    renderCounter();
   }
 
   function renderChart(a){
@@ -401,7 +434,7 @@ details[open] summary{margin-bottom:14px}
     let ce = 0, cs = a.fixed; const earnPts = [], spendPts = [];
     let lastIdx = -1;
     a.all.forEach((d, i) => {
-      const day = state.days[d];
+      const day = state.days[d] && !state.days[d].draft ? state.days[d] : null;
       if (day){ ce += num(day.made); cs += num(day.food) + num(day.transport); lastIdx = i; }
       if (d <= todayISO || day){ earnPts.push([i, ce]); spendPts.push([i, cs]); }
     });
@@ -430,18 +463,28 @@ details[open] summary{margin-bottom:14px}
 
   function renderDays(a){
     const ul = $("days");
-    if (!a.days.length){ ul.innerHTML = '<li style="display:block"><p class="empty">No days yet. Log your first day above and the numbers start working.</p></li>'; return; }
-    ul.innerHTML = a.days.slice().reverse().map(([d, v]) => {
+    const all = Object.entries(state.days).sort((x,y) => x[0] < y[0] ? 1 : -1);
+    if (!all.length){ ul.innerHTML = '<li style="display:block"><p class="empty">No days yet. Log your first day above and the numbers start working.</p></li>'; return; }
+    const chip = dt => `<div class="date-chip">${dt.getDate()}<small>${dt.toLocaleDateString("en-US",{month:"short"})} · ${dt.toLocaleDateString("en-US",{weekday:"short"})}</small></div>`;
+    const actions = d => `<div class="day-actions"><button class="ghost" data-edit="${d}">Edit</button><button class="ghost" data-del="${d}">Delete</button></div>`;
+    ul.innerHTML = all.map(([d, v]) => {
       const dt = parse(d);
+      if (v.draft) return `<li>
+        ${chip(dt)}
+        <div class="day-main">${num(v.cuts)} cuts counted
+          <span class="sub">In progress · add money, food and transport in Log a day</span></div>
+        <div class="day-net" style="color:var(--muted)">—</div>
+        ${actions(d)}
+      </li>`;
       const net = num(v.made) - num(v.food) - num(v.transport);
       const per = num(v.cuts) ? fmt2(num(v.made)/num(v.cuts)) + "/cut" : "";
       const hrs = dayHours(v);
       return `<li>
-        <div class="date-chip">${dt.getDate()}<small>${dt.toLocaleDateString("en-US",{month:"short"})} · ${dt.toLocaleDateString("en-US",{weekday:"short"})}</small></div>
+        ${chip(dt)}
         <div class="day-main">${num(v.cuts)} cuts · ${fmt(num(v.made))}${per ? " · "+per : ""}
           <span class="sub">Food ${fmt(num(v.food))} · Transport ${fmt(num(v.transport))}</span>${hrs !== null ? `<span class="sub">${fmtHrs(hrs)} · ${fmtTime(v.inAt)}–${fmtTime(v.outAt)}</span>` : ""}</div>
         <div class="day-net" style="color:${net>=0?"var(--good)":"var(--red)"}">${net>=0?"+":""}${fmt(net)}</div>
-        <div class="day-actions"><button class="ghost" data-edit="${d}">Edit</button><button class="ghost" data-del="${d}">Delete</button></div>
+        ${actions(d)}
       </li>`;
     }).join("");
   }
@@ -470,7 +513,7 @@ details[open] summary{margin-bottom:14px}
     $("dCuts").value = v.cuts ?? ""; $("dMade").value = v.made ?? "";
     $("dTransport").value = v.transport ?? ""; $("dFood").value = v.food ?? "";
     $("dIn").value = v.inAt || ""; $("dOut").value = v.outAt || "";
-    $("logTitle").textContent = state.days[d] ? "Edit day" : "Log a day";
+    $("logTitle").textContent = state.days[d] && !state.days[d].draft ? "Edit day" : "Log a day";
   }
   $("dDate").addEventListener("change", e => { if (e.target.value) loadDayIntoForm(e.target.value); });
 
@@ -478,7 +521,7 @@ details[open] summary{margin-bottom:14px}
     const d = $("dDate").value;
     if (!d){ $("dayToast").style.color="var(--red)"; flash("dayToast","Pick a date first."); return; }
     $("dayToast").style.color = "";
-    const existed = !!state.days[d];
+    const existed = !!(state.days[d] && !state.days[d].draft);
     const inAt = $("dIn").value, outAt = $("dOut").value;
     if (inAt && inAt === outAt){ $("dayToast").style.color="var(--red)"; flash("dayToast","In and out are the same time."); return; }
     if (!!inAt !== !!outAt){ $("dayToast").style.color="var(--red)"; flash("dayToast", inAt ? "Add the time you finished too, or clear In at." : "Add the time you started too, or clear Out at."); return; }
@@ -500,6 +543,43 @@ details[open] summary{margin-bottom:14px}
       }
     }
   });
+
+  // ---------- tap counter ----------
+  const today = () => iso(new Date());
+
+  function renderCounter(){
+    const d = today(), v = state.days[d];
+    const n = v ? num(v.cuts) : 0;
+    $("cCount").textContent = n;
+    $("cUnit").textContent = n === 1 ? "cut" : "cuts";
+    $("cMinus").disabled = n <= 0;
+    const notes = [];
+    if (state.start && state.end && (d < state.start || d > state.end)) notes.push("Today is outside your trip dates, but the cuts still count.");
+    if (v && v.draft) notes.push("Add money, food and transport in Log a day when you finish.");
+    $("cNote").textContent = notes.join(" ");
+  }
+
+  function replay(el, cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+  function bumpCuts(delta){
+    const d = today();
+    const v = state.days[d];
+    const n = Math.max(0, (v ? num(v.cuts) : 0) + delta);
+    if (v && n === num(v.cuts)) return;
+    if (!v) state.days[d] = { cuts: n, draft: true };
+    else if (v.draft && n === 0) delete state.days[d];
+    else v.cuts = n;
+    persist(); render();
+    // Keep Log a day in step if it's showing today
+    if ($("dDate").value === d) $("dCuts").value = state.days[d] ? n : "";
+    replay($("cCount"), "bump");
+    if (delta > 0) replay($("cPlus"), "pulse");
+    try { if (navigator.vibrate) navigator.vibrate(delta > 0 ? 15 : [10, 40, 10]); } catch(e){}
+  }
+
+  $("cPlus").addEventListener("click", () => bumpCuts(1));
+  $("cMinus").addEventListener("click", () => bumpCuts(-1));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) renderCounter(); });
 
   // ---------- backup ----------
   async function saveFile(name, type, text){
@@ -589,6 +669,7 @@ details[open] summary{margin-bottom:14px}
     Object.entries(raw.days).forEach(([d, v]) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !v || typeof v !== "object") return;
       const inAt = TIME_RE.test(v.inAt || "") ? v.inAt : "", outAt = TIME_RE.test(v.outAt || "") ? v.outAt : "";
+      if (v.draft === true){ out.days[d] = { cuts: num(v.cuts), draft: true }; return; }
       out.days[d] = { cuts: num(v.cuts), made: num(v.made), transport: num(v.transport), food: num(v.food), inAt: inAt && outAt ? inAt : "", outAt: inAt && outAt ? outAt : "" };
     });
     return out;
