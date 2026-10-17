@@ -160,14 +160,16 @@ details[open] summary{margin-bottom:14px}
         <div><label for="start">First day</label><input type="date" id="start"></div>
         <div><label for="end">Last day</label><input type="date" id="end"></div>
         <div><label for="flight">Flight</label><div class="money"><input id="flight" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="lodgingRate">Lodging per night</label><div class="money"><input id="lodgingRate" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="nights">Nights</label><input id="nights" inputmode="numeric" placeholder="0"></div>
-        <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="chairRent">Chair rent per week</label><div class="money"><input id="chairRent" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="weeks">Weeks</label><input id="weeks" inputmode="numeric" placeholder="0"></div>
         <div><label for="estFood">Food per day (estimate)</label><div class="money"><input id="estFood" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="estTransport">Transport per day (estimate)</label><div class="money"><input id="estTransport" inputmode="decimal" placeholder="0"></div></div>
         <div class="span"><label for="profitGoal">Profit goal (take-home after every cost)</label><div class="money"><input id="profitGoal" inputmode="decimal" placeholder="Leave blank for no goal"></div></div>
       </div>
-      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights fills in from your dates; type a number to override it. Put chair rent or supplies under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
+      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights and weeks fill in from your dates; type a number to override them. Put supplies or anything else you pay once under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
       <button class="primary" id="saveCosts">Save trip costs</button>
       <div class="toast" id="costsToast" aria-live="polite"></div>
     </details>
@@ -247,7 +249,7 @@ details[open] summary{margin-bottom:14px}
 
   function defaults(){
     const s = new Date(); const e = new Date(); e.setDate(e.getDate()+29);
-    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
+    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", chairRent:"", weeks:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
   }
 
   let state = defaults();
@@ -274,7 +276,11 @@ details[open] summary{margin-bottom:14px}
     const nights = String(state.nights ?? "") !== "" ? num(state.nights) : nightsAuto;
     const hasRate = String(state.lodgingRate ?? "") !== "";
     const lodgingTotal = hasRate ? num(state.lodgingRate) * nights : num(state.lodging);
-    const fixed = num(state.flight) + lodgingTotal + num(state.other);
+    const tripDays = tripDates().length;
+    const weeksAuto = Math.ceil(tripDays / 7);
+    const weeks = String(state.weeks ?? "") !== "" ? num(state.weeks) : weeksAuto;
+    const chairRate = num(state.chairRent), chairTotal = chairRate * weeks;
+    const fixed = num(state.flight) + lodgingTotal + chairTotal + num(state.other);
     let earned = 0, cuts = 0, food = 0, transport = 0;
     days.forEach(([,d]) => { earned += num(d.made); cuts += num(d.cuts); food += num(d.food); transport += num(d.transport); });
     const logged = days.length;
@@ -295,13 +301,14 @@ details[open] summary{margin-bottom:14px}
     let hours = 0, timedDays = 0, timedEarned = 0, timedCuts = 0;
     days.forEach(([,d]) => { const h = dayHours(d); if (h === null) return; hours += h; timedDays++; timedEarned += num(d.made); timedCuts += num(d.cuts); });
     const perHour = hours ? timedEarned/hours : 0, cutsPerHour = hours ? timedCuts/hours : 0;
-    return {hours, timedDays, perHour, cutsPerHour, profitGoal, hasGoal, goalTarget, goalGap, days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
+    return {weeks, weeksAuto, chairRate, chairTotal, hours, timedDays, perHour, cutsPerHour, profitGoal, hasGoal, goalTarget, goalGap, days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
   }
 
   // ---------- render ----------
   function render(){
     const a = analyze();
     $("nights").placeholder = String(a.nightsAuto);
+    $("weeks").placeholder = String(a.weeksAuto);
     const pct = a.goal > 0 ? Math.min(100, a.earned / a.goal * 100) : (a.earned > 0 ? 100 : 0);
     const fill = $("poleFill");
     fill.style.width = pct + "%";
@@ -342,6 +349,7 @@ details[open] summary{margin-bottom:14px}
     add("Flight", fmt(num(state.flight)));
     add(a.hasRate ? `Lodging (${a.nights} nights × ${fmt2(a.rate)})` : "Lodging", fmt(a.lodgingTotal));
     if (a.hasRate && a.nights) add("Every $5/night off lodging saves", fmt(5 * a.nights), "pos");
+    if (a.chairRate) add(`Chair rent (${a.weeks} week${a.weeks === 1 ? "" : "s"} × ${Number.isInteger(a.chairRate) ? fmt(a.chairRate) : fmt2(a.chairRate)})`, fmt(a.chairTotal));
     if (num(state.other)) add("Other one-time costs", fmt(num(state.other)));
     add("Food logged", fmt(a.food));
     add("Transport logged", fmt(a.transport));
@@ -439,7 +447,7 @@ details[open] summary{margin-bottom:14px}
   }
 
   // ---------- forms ----------
-  const costFields = ["start","end","flight","lodgingRate","nights","other","estFood","estTransport","profitGoal"];
+  const costFields = ["start","end","flight","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"];
   function fillCosts(){ costFields.forEach(k => $(k).value = state[k] ?? ""); }
   function hasCosts(){ return num(state.flight) || num(state.lodging) || num(state.other); }
 
@@ -533,6 +541,9 @@ details[open] summary{margin-bottom:14px}
       ["Lodging per night", a.hasRate ? r2(a.rate) : ""],
       ["Nights", a.nights],
       ["Lodging total", r2(a.lodgingTotal)],
+      ["Chair rent per week", r2(a.chairRate)],
+      ["Weeks", a.weeks],
+      ["Chair rent total", r2(a.chairTotal)],
       ["Other one-time costs", r2(num(state.other))],
       ["Food per day (estimate)", state.estFood],
       ["Transport per day (estimate)", state.estTransport],
@@ -572,7 +583,7 @@ details[open] summary{margin-bottom:14px}
     if (!raw || typeof raw !== "object" || Array.isArray(raw) || !raw.days || typeof raw.days !== "object") return null;
     const out = defaults();
     ["start","end"].forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(raw[k] ?? "")) out[k] = raw[k]; });
-    ["flight","lodging","lodgingRate","nights","other","estFood","estTransport","profitGoal"].forEach(k => {
+    ["flight","lodging","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"].forEach(k => {
       if (k in raw) out[k] = String(raw[k] ?? "") === "" ? "" : String(num(raw[k]));
     });
     Object.entries(raw.days).forEach(([d, v]) => {
