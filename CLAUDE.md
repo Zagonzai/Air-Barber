@@ -3,11 +3,12 @@
 A mobile-first tracker for a month-long barbering trip to Boston. The one job of the app: show clearly whether the money made cutting hair covers everything the trip costs — money already spent plus money still to be spent.
 
 ## What it tracks
-- **Trip setup:** first/last day, flight, lodging per night (currently $45/night, negotiable — staying at a friend's Airbnb), nights (auto from dates, overridable), other one-time costs (chair rent, supplies), estimated food and transport per day, optional profit goal (take-home after every cost).
+- **Trip setup:** first/last day, flight, lodging per night (currently $45/night, negotiable — staying at a friend's Airbnb), nights (auto from dates, overridable), chair rent per week, weeks (auto = ceil(trip days / 7), overridable), other one-time costs (supplies etc.), estimated food and transport per day, optional profit goal (take-home after every cost).
+- **Tap counter:** big "+1 Cut" button under the hero for counting cuts live during the day (see Current state).
 - **Daily log:** date, optional in/out times, number of cuts, money made, transport spent, food spent. One entry per date; saving an existing date updates it.
 
 ## Core math (in `analyze()` in index.html)
-- Fixed costs = flight + (lodging rate × nights) + other
+- Fixed costs = flight + (lodging rate × nights) + (chair rent per week × weeks) + other
 - Spent so far = fixed + logged food + logged transport
 - Still to spend = remaining unlogged trip days (today onward) × (estimated daily food + transport; falls back to logged averages if estimates are blank)
 - Break-even goal = spent so far + still to spend
@@ -23,7 +24,10 @@ A mobile-first tracker for a month-long barbering trip to Boston. The one job of
 - `.nojekyll` — tells GitHub Pages to serve files as-is.
 
 ## Current state
-- Day entries look like `{cuts, made, transport, food, inAt, outAt}` with times as `"HH:MM"` or `""`. Older entries without `inAt`/`outAt` (and old states without `profitGoal`) load fine.
+- Day entries look like `{cuts, made, transport, food, inAt, outAt}` with times as `"HH:MM"` or `""`. Older entries without `inAt`/`outAt` (and old states without `profitGoal`, `chairRent`, `weeks`) load fine.
+- **Draft days:** the tap counter creates today's entry as `{cuts, draft: true}`. `analyze()` skips drafts entirely (not in totals, averages, chart, or CSV rows; a draft today still counts as a remaining day for still-to-spend), so a half-finished day doesn't move the math. Saving the day in Log a day writes a normal entry (no `draft`). Days list shows drafts as "in progress". Restore keeps drafts.
+- **Tap counter** (`bumpCuts()` / `renderCounter()`): "+1 Cut" adds to today's entry (creating a draft if none) and saves immediately; "−1" can't go below 0 and deletes a draft that reaches 0. Uses the live date (`today()`), refreshes on `visibilitychange`, updates the Log a day Cuts field when it's showing today, bump/pulse animation + `navigator.vibrate`. Note shown when today is outside the trip dates.
+- Trip costs grid order: first/last day, flight/other, lodging per night/nights, chair rent per week/weeks, food/transport estimates, profit goal. Where you stand shows "Chair rent (N weeks × $rate)" when rent is set.
 - Hero: barber-pole break-even bar, plus a slim green goal bar (with a marker at the break-even point) when a profit goal is set. Chart draws the break-even line (grey dashed) and the goal line (green dotted).
 - Data persists only in `localStorage` (key `boston-cut-tracker-v1`). No account sync; the old claude.ai sync code was removed. Header reads "Saved on this phone only".
 - All paths are relative so it works under the GitHub Pages repo subpath (`/Air-Barber/`).
