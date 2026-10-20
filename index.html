@@ -197,7 +197,7 @@ details[open] summary{margin-bottom:14px}
         <div><label for="weeks">Weeks</label><input id="weeks" inputmode="numeric" placeholder="0"></div>
         <div><label for="estFood">Food per day (estimate)</label><div class="money"><input id="estFood" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="estTransport">Transport per day (estimate)</label><div class="money"><input id="estTransport" inputmode="decimal" placeholder="0"></div></div>
-        <div class="span"><label for="profitGoal">Profit goal (take-home after every cost)</label><div class="money"><input id="profitGoal" inputmode="decimal" placeholder="Leave blank for no goal"></div></div>
+        <div class="span"><label for="profitGoal">Profit goal (take-home after every cost)</label><div class="money"><input id="profitGoal" inputmode="decimal" placeholder="0"></div></div>
       </div>
       <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights and weeks fill in from your dates; type a number to override them. Put supplies or anything else you pay once under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
       <button class="primary" id="saveCosts">Save trip costs</button>
@@ -277,13 +277,19 @@ details[open] summary{margin-bottom:14px}
   const fmtHrs = h => (Math.round(h*10)/10).toLocaleString("en-US") + " hrs";
   const fmtTime = t => { const [h,m] = t.split(":").map(Number); return ((h+11)%12+1) + ":" + String(m).padStart(2,"0") + (h < 12 ? "am" : "pm"); };
 
+  // New users start completely blank. Saved data is loaded on top of this untouched.
   function defaults(){
-    const s = new Date(); const e = new Date(); e.setDate(e.getDate()+29);
-    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", chairRent:"", weeks:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
+    return {start:"", end:"", flight:"", lodging:"", lodgingRate:"", nights:"", chairRent:"", weeks:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
   }
 
   let state = defaults();
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(defaults(), JSON.parse(raw)); } catch(e){}
+  // Data saved before blank defaults always carried lodgingRate; if it's somehow missing, keep the old $45.
+  const LEGACY_LODGING_RATE = "45";
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw){ const saved = JSON.parse(raw); state = Object.assign(defaults(), saved); if (!("lodgingRate" in saved)) state.lodgingRate = LEGACY_LODGING_RATE; }
+  } catch(e){}
+  const datesSet = () => !!(state.start && state.end);
 
   function persist(){
     state.updatedAt = Date.now();
@@ -348,7 +354,10 @@ details[open] summary{margin-bottom:14px}
     $("pole").setAttribute("aria-valuenow", Math.round(pct));
 
     const status = $("status"), sub = $("statusSub");
-    if (a.goal <= 0 && a.earned === 0){
+    if (!datesSet()){
+      status.textContent = "Let's get started"; status.classList.remove("win");
+      sub.textContent = "Set your trip dates and costs to get started.";
+    } else if (a.goal <= 0 && a.earned === 0){
       status.textContent = "Set your costs"; status.classList.remove("win");
       sub.textContent = "Add your flight, lodging and daily estimates to set the break-even line.";
     } else if (a.gap > 0){
@@ -504,7 +513,7 @@ details[open] summary{margin-bottom:14px}
       state[k] = (k === "start" || k === "end") ? v : (v === "" ? "" : String(num(v)));
     });
     persist(); render(); flash("costsToast","Trip costs saved");
-    $("costsBox").open = false;
+    $("costsBox").open = !datesSet();
   });
 
   function loadDayIntoForm(d){
@@ -662,6 +671,7 @@ details[open] summary{margin-bottom:14px}
   function cleanBackup(raw){
     if (!raw || typeof raw !== "object" || Array.isArray(raw) || !raw.days || typeof raw.days !== "object") return null;
     const out = defaults();
+    if (!("lodgingRate" in raw)) out.lodgingRate = LEGACY_LODGING_RATE;
     ["start","end"].forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(raw[k] ?? "")) out[k] = raw[k]; });
     ["flight","lodging","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"].forEach(k => {
       if (k in raw) out[k] = String(raw[k] ?? "") === "" ? "" : String(num(raw[k]));
@@ -687,13 +697,13 @@ details[open] summary{margin-bottom:14px}
     if (!confirm(`Restore this backup? It has ${n} logged day${n===1?"":"s"} and will replace everything on this phone (${cur} logged day${cur===1?"":"s"}). This can't be undone.`)) return;
     state = next;
     persist();
-    fillCosts(); $("costsBox").open = !hasCosts(); loadDayIntoForm(todayISO); render();
+    fillCosts(); $("costsBox").open = !hasCosts() || !datesSet(); loadDayIntoForm(todayISO); render();
     flash("backupToast","Backup restored");
   });
 
   // ---------- boot ----------
   fillCosts();
-  $("costsBox").open = !hasCosts();
+  $("costsBox").open = !hasCosts() || !datesSet();
   loadDayIntoForm(todayISO);
   render();
 

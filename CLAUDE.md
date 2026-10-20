@@ -3,7 +3,7 @@
 A mobile-first tracker for a month-long barbering trip to Boston. The one job of the app: show clearly whether the money made cutting hair covers everything the trip costs — money already spent plus money still to be spent.
 
 ## What it tracks
-- **Trip setup:** first/last day, flight, lodging per night (currently $45/night, negotiable — staying at a friend's Airbnb), nights (auto from dates, overridable), chair rent per week, weeks (auto = ceil(trip days / 7), overridable), other one-time costs (supplies etc.), estimated food and transport per day, optional profit goal (take-home after every cost).
+- **Trip setup:** first/last day, flight, lodging per night (owner's saved value is $45/night, negotiable — staying at a friend's Airbnb; not a default), nights (auto from dates, overridable), chair rent per week, weeks (auto = ceil(trip days / 7), overridable), other one-time costs (supplies etc.), estimated food and transport per day, optional profit goal (take-home after every cost).
 - **Tap counter:** big "+1 Cut" button under the hero for counting cuts live during the day (see Current state).
 - **Daily log:** date, optional in/out times, number of cuts, money made, transport spent, food spent. One entry per date; saving an existing date updates it.
 
@@ -29,6 +29,7 @@ A mobile-first tracker for a month-long barbering trip to Boston. The one job of
 - **Tap counter** (`bumpCuts()` / `renderCounter()`): "+1 Cut" adds to today's entry (creating a draft if none) and saves immediately; "−1" can't go below 0 and deletes a draft that reaches 0. Uses the live date (`today()`), refreshes on `visibilitychange`, updates the Log a day Cuts field when it's showing today, bump/pulse animation + `navigator.vibrate`. Note shown when today is outside the trip dates.
 - Trip costs grid order: first/last day, flight/other, lodging per night/nights, chair rent per week/weeks, food/transport estimates, profit goal. Where you stand shows "Chair rent (N weeks × $rate)" when rent is set.
 - Hero: barber-pole break-even bar, plus a slim green goal bar (with a marker at the break-even point) when a profit goal is set. Chart draws the break-even line (grey dashed) and the goal line (green dotted).
+- **New users start blank:** `defaults()` has every cost field and both trip dates empty (all inputs show a "0" placeholder). Until both dates are set the hero reads "Let's get started / Set your trip dates and costs to get started." and Trip costs stays open (also stays open after saving if dates are still missing). Saved data is merged over the blank defaults untouched; a saved state or backup with no `lodgingRate` key at all (pre-dates this change) keeps the old $45 (`LEGACY_LODGING_RATE`).
 - Data persists only in `localStorage` (key `boston-cut-tracker-v1`). No account sync; the old claude.ai sync code was removed. Header reads "Saved on this phone only".
 - All paths are relative so it works under the GitHub Pages repo subpath (`/Air-Barber/`).
 - Installable on iPhone (Safari → Share → Add to Home Screen) and Android (Chrome → Install app). Works offline after the first load.
