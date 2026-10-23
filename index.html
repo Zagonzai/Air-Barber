@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Boston Chair Count</title>
+<meta name="theme-color" content="#13213B">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chair Count">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +36,8 @@
   --red:#E8334F; --blue:#5B82E0; --pole-white:#EEF2FA; --good:#3CC488; --track:#22304D;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-*,*::before,*::after{box-sizing:inherit}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:640px;margin:0 auto;padding:20px 18px 48px}
 h1,h2{font-family:var(--display);font-weight:800;letter-spacing:.01em;margin:0;line-height:1.05}
@@ -49,18 +58,80 @@ h2{font-size:1.45rem;margin-bottom:12px}
   background-size:96px 100%;transition:width .7s cubic-bezier(.2,.8,.2,1);animation:spin 2.4s linear infinite}
 .pole-fill.full{border-radius:15px}
 @keyframes spin{to{background-position:96px 0}}
-@media (prefers-reduced-motion:reduce){.pole-fill{animation:none;transition:none}}
+@media (prefers-reduced-motion:reduce){.pole-fill,.goal-fill{animation:none;transition:none}}
 .pole-legend{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);margin-top:8px}
+.goal{margin-top:16px}
+.goalbar{position:relative;height:14px;border-radius:7px;background:var(--track);border:2px solid var(--ink)}
+.goal-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:5px;background:var(--good);transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.goal-mark{position:absolute;top:-7px;bottom:-7px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink)}
+.mark-key{display:inline-block;width:3px;height:.95em;border-radius:2px;background:var(--ink);vertical-align:-2px;margin-right:5px}
 .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
 .trio div{background:var(--surface);border-radius:12px;padding:10px 12px}
 .trio b{display:block;font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1.1}
 .trio span{font-size:.8rem;color:var(--muted)}
 
+/* Tap counter */
+.counter{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 16px;align-items:end}
+.counter .tap{grid-column:1/-1}
+.count-label{display:block;font-size:.85rem;font-weight:600;color:var(--muted)}
+.count-line{display:flex;align-items:baseline;gap:8px;line-height:1}
+.count-num{display:inline-block;font-family:var(--display);font-weight:900;font-size:3.6rem;line-height:.95;font-variant-numeric:tabular-nums}
+.count-unit{font-family:var(--display);font-weight:800;font-size:1.4rem}
+.count-num.bump{animation:bump .3s ease-out}
+@keyframes bump{40%{transform:scale(1.25);color:var(--good)}}
+.tap{width:100%;min-height:104px;background:var(--ink);color:var(--bg);font-family:var(--display);font-weight:900;font-size:2.1rem;letter-spacing:.01em;border-radius:18px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:transform .08s}
+.tap:active{transform:scale(.96)}
+.tap.pulse{animation:pulse .45s ease-out}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 70%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+.minus{min-height:44px;padding:0 16px;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-size:1rem;touch-action:manipulation}
+.minus:disabled{opacity:.4;cursor:default}
+.counter-note{margin:12px 0 0}
+.counter-note:empty{display:none}
+.count-line{flex-wrap:wrap;row-gap:2px}
+.count-money{font-family:var(--display);font-weight:800;font-size:1.4rem;color:var(--muted)}
+.cutlist{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.cutlist summary{font-weight:600;color:var(--muted);font-size:.95rem;min-height:32px}
+details.cutlist[open] summary{margin-bottom:6px}
+.cutlist .chev::before{content:"Show"}
+.cutlist[open] .chev::before{content:"Hide"}
+.cuts{list-style:none;margin:0;padding:0}
+.cuts li{border-top:1px solid var(--line)}
+.cuts li:first-child{border-top:0}
+.cut-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;background:transparent;color:var(--ink);border-radius:8px;min-height:48px;padding:0 4px;font-weight:600;text-align:left}
+.cut-row .t{color:var(--muted);font-weight:500}
+.cut-row .fix{color:var(--muted);font-size:.8rem;font-weight:600;margin-left:10px}
+.cut-row .none{color:var(--muted);font-style:italic;font-weight:500}
+
+/* Price sheet */
+.sheet-back{position:fixed;inset:0;z-index:50;background:rgba(5,10,20,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;width:100%;max-width:640px;background:var(--surface);border-radius:22px 22px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.25);animation:rise .18s ease-out}
+@keyframes rise{from{transform:translateY(30px);opacity:.6}}
+.sheet-grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.sheet-head h2{margin:0}
+.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.quick:empty{display:none}
+.quick button{min-height:58px;padding:0 4px;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-family:var(--display);font-weight:800;font-size:1.5rem;touch-action:manipulation}
+.quick-hint{font-size:.85rem;color:var(--muted);margin:0 0 10px}
+.money.big::before{font-size:1.6rem;left:16px;font-family:var(--display);font-weight:800}
+.money.big input{font-family:var(--display);font-weight:800;font-size:2.2rem;min-height:68px;padding-left:36px}
+.sheet .primary{min-height:58px;font-size:1.2rem}
+.sheet-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px}
+.link{background:transparent;color:var(--muted);min-height:44px;padding:0 6px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.link.danger{color:var(--red)}
+.sheet-err{color:var(--red);font-size:.9rem;font-weight:600;min-height:1.3em;margin:6px 0 0}
+body.sheet-open{overflow:hidden}
+@media (prefers-reduced-motion:reduce){.count-num.bump,.tap.pulse,.sheet{animation:none}.tap{transition:none}}
+
 section.block{background:var(--surface);border-radius:18px;padding:18px;margin-bottom:16px}
 label{display:block;font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:4px}
-input{width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px}
+input{display:block;width:100%;min-width:0;max-width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px}
+input[type="date"],input[type="time"]{-webkit-appearance:none;appearance:none;text-align:left}
+input::-webkit-date-and-time-value{text-align:left;margin:0}
+input::-webkit-datetime-edit{padding:0}
 input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 30%,transparent)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.grid2>*{min-width:0}
 .grid2 .span{grid-column:1/-1}
 .money{position:relative}
 .money::before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
@@ -70,6 +141,8 @@ button:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline
 .primary{width:100%;margin-top:14px;background:var(--ink);color:var(--bg);font-size:1.05rem}
 .ghost{background:transparent;color:var(--muted);min-height:36px;padding:0 8px;font-weight:600;font-size:.85rem}
 .note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.secondary{width:100%;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-size:1rem}
+.stack{display:grid;gap:10px}
 .toast{font-size:.9rem;color:var(--good);font-weight:600;min-height:1.4em;margin-top:8px}
 
 /* Analysis rows */
@@ -109,7 +182,7 @@ details[open] summary{margin-bottom:14px}
 <div class="wrap">
   <header class="top">
     <h1>Boston chair count</h1>
-    <span class="sync" id="sync">Saved on this device</span>
+    <span class="sync" id="sync">Saved on this phone only</span>
   </header>
 
   <div class="hero">
@@ -119,12 +192,35 @@ details[open] summary{margin-bottom:14px}
       <div class="pole-fill" id="poleFill"></div>
     </div>
     <div class="pole-legend"><span id="legendLeft">$0 earned</span><span id="legendRight">Break even at $0</span></div>
+    <div class="goal" id="goalHero" hidden>
+      <div class="goalbar" role="progressbar" aria-label="Earnings toward profit goal" aria-valuemin="0" aria-valuemax="100" id="goalBar">
+        <div class="goal-fill" id="goalFill"></div>
+        <div class="goal-mark" id="goalMark"></div>
+      </div>
+      <div class="pole-legend"><span id="goalLeft">$0 of $0 goal</span><span><i class="mark-key"></i><span id="goalRight">Break-even $0</span></span></div>
+    </div>
     <div class="trio">
       <div><b id="tEarned">$0</b><span>Earned</span></div>
       <div><b id="tCost">$0</b><span>Trip cost</span></div>
       <div><b id="tCuts">0</b><span>Cuts</span></div>
     </div>
   </div>
+
+  <section class="block" aria-label="Cut counter">
+    <div class="counter">
+      <div>
+        <span class="count-label">Today</span>
+        <div class="count-line" aria-live="polite"><b class="count-num" id="cCount">0</b><span class="count-unit" id="cUnit">cuts</span><span class="count-money" id="cMoney"></span></div>
+      </div>
+      <button class="minus" id="cMinus" aria-label="Remove the most recent cut">−1</button>
+      <button class="tap" id="cPlus">+1 Cut</button>
+    </div>
+    <p class="note counter-note" id="cNote"></p>
+    <details class="cutlist" id="cutList" hidden>
+      <summary><span id="cutListTitle">Today's cuts</span><span class="chev"></span></summary>
+      <ul class="cuts" id="cuts"></ul>
+    </details>
+  </section>
 
   <section class="block">
     <details id="costsBox">
@@ -133,13 +229,16 @@ details[open] summary{margin-bottom:14px}
         <div><label for="start">First day</label><input type="date" id="start"></div>
         <div><label for="end">Last day</label><input type="date" id="end"></div>
         <div><label for="flight">Flight</label><div class="money"><input id="flight" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="lodgingRate">Lodging per night</label><div class="money"><input id="lodgingRate" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="nights">Nights</label><input id="nights" inputmode="numeric" placeholder="0"></div>
-        <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="chairRent">Chair rent per week</label><div class="money"><input id="chairRent" inputmode="decimal" placeholder="0"></div></div>
+        <div><label for="weeks">Weeks</label><input id="weeks" inputmode="numeric" placeholder="0"></div>
         <div><label for="estFood">Food per day (estimate)</label><div class="money"><input id="estFood" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="estTransport">Transport per day (estimate)</label><div class="money"><input id="estTransport" inputmode="decimal" placeholder="0"></div></div>
+        <div class="span"><label for="profitGoal">Profit goal (take-home after every cost)</label><div class="money"><input id="profitGoal" inputmode="decimal" placeholder="0"></div></div>
       </div>
-      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights fills in from your dates; type a number to override it. Put chair rent or supplies under other one-time costs.</p>
+      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights and weeks fill in from your dates; type a number to override them. Put supplies or anything else you pay once under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
       <button class="primary" id="saveCosts">Save trip costs</button>
       <div class="toast" id="costsToast" aria-live="polite"></div>
     </details>
@@ -149,11 +248,14 @@ details[open] summary{margin-bottom:14px}
     <h2 id="logTitle">Log a day</h2>
     <div class="grid2">
       <div class="span"><label for="dDate">Date</label><input type="date" id="dDate"></div>
+      <div><label for="dIn">In at</label><input type="time" id="dIn"></div>
+      <div><label for="dOut">Out at</label><input type="time" id="dOut"></div>
       <div><label for="dCuts">Cuts</label><input id="dCuts" inputmode="numeric" placeholder="0"></div>
       <div><label for="dMade">Money made</label><div class="money"><input id="dMade" inputmode="decimal" placeholder="0"></div></div>
       <div><label for="dTransport">Transport</label><div class="money"><input id="dTransport" inputmode="decimal" placeholder="0"></div></div>
       <div><label for="dFood">Food</label><div class="money"><input id="dFood" inputmode="decimal" placeholder="0"></div></div>
     </div>
+    <p class="note">In and out times are optional. If you're out after midnight, the hours carry over to the next morning.</p>
     <button class="primary" id="saveDay">Save day</button>
     <div class="toast" id="dayToast" aria-live="polite"></div>
   </section>
@@ -170,6 +272,7 @@ details[open] summary{margin-bottom:14px}
       <span><i style="background:var(--blue)"></i>Earned so far</span>
       <span><i style="background:var(--red)"></i>Spent so far</span>
       <span><i style="background:var(--muted)"></i>Break-even line</span>
+      <span id="goalKey" hidden><i style="background:var(--good)"></i>Goal line</span>
     </div>
   </section>
 
@@ -177,6 +280,31 @@ details[open] summary{margin-bottom:14px}
     <h2>Your days</h2>
     <ul class="days" id="days"></ul>
   </section>
+
+  <section class="block">
+    <h2>Backup</h2>
+    <div class="stack">
+      <button class="secondary" id="exportCsv">Export CSV</button>
+      <button class="secondary" id="downloadBackup">Download backup</button>
+      <button class="secondary" id="restoreBackup">Restore backup</button>
+    </div>
+    <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    <p class="note">Everything is saved on this phone only. Download a backup now and then so you don't lose your log if the phone is lost or the browser data gets cleared. Export CSV opens in Excel, Numbers or Google Sheets.</p>
+    <div class="toast" id="backupToast" aria-live="polite"></div>
+  </section>
+</div>
+
+<div class="sheet-back" id="sheetBack" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 id="sheetTitle">How much did they pay?</h2><button class="ghost" id="sheetCancel">Cancel</button></div>
+    <div class="quick" id="quick"></div>
+    <p class="quick-hint" id="quickHint">Your most-used prices will show up here as one-tap buttons.</p>
+    <div class="money big"><input id="sheetAmt" aria-label="Amount paid" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="0"></div>
+    <p class="sheet-err" id="sheetErr" aria-live="polite"></p>
+    <button class="primary" id="sheetSave">Save</button>
+    <div class="sheet-foot"><button class="link" id="sheetSkip">Skip — no amount</button><button class="link danger" id="sheetDelete" hidden>Delete cut</button></div>
+  </div>
 </div>
 
 <script>
@@ -185,31 +313,40 @@ details[open] summary{margin-bottom:14px}
   const $ = id => document.getElementById(id);
   const fmt = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
   const fmt2 = n => (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const r2 = n => Math.round(n*100)/100;
   const num = v => { const n = parseFloat(String(v ?? "").replace(/[$,\s]/g,"")); return isFinite(n) ? n : 0; };
   const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
   const todayISO = iso(new Date());
+  const TIME_RE = /^\d{2}:\d{2}$/;
+  const mins = t => { const [h,m] = t.split(":").map(Number); return h*60 + m; };
+  // Hours worked from in/out times; null when either is missing. Out earlier than in = past midnight.
+  const dayHours = v => {
+    if (!v || !TIME_RE.test(v.inAt || "") || !TIME_RE.test(v.outAt || "")) return null;
+    let diff = mins(v.outAt) - mins(v.inAt);
+    if (diff < 0) diff += 1440;
+    return diff ? diff / 60 : null;
+  };
+  const fmtHrs = h => (Math.round(h*10)/10).toLocaleString("en-US") + " hrs";
+  const fmtTime = t => { const [h,m] = t.split(":").map(Number); return ((h+11)%12+1) + ":" + String(m).padStart(2,"0") + (h < 12 ? "am" : "pm"); };
 
+  // New users start completely blank. Saved data is loaded on top of this untouched.
   function defaults(){
-    const s = new Date(); const e = new Date(); e.setDate(e.getDate()+29);
-    return {start:iso(s), end:iso(e), flight:"", lodging:"", lodgingRate:"45", nights:"", other:"", estFood:"", estTransport:"", days:{}, updatedAt:0};
+    return {start:"", end:"", flight:"", lodging:"", lodgingRate:"", nights:"", chairRent:"", weeks:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
   }
 
   let state = defaults();
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(defaults(), JSON.parse(raw)); } catch(e){}
-
-  let dbDoc = null, saveTimer = null;
+  // Data saved before blank defaults always carried lodgingRate; if it's somehow missing, keep the old $45.
+  const LEGACY_LODGING_RATE = "45";
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw){ const saved = JSON.parse(raw); state = Object.assign(defaults(), saved); if (!("lodgingRate" in saved)) state.lodgingRate = LEGACY_LODGING_RATE; }
+  } catch(e){}
+  const datesSet = () => !!(state.start && state.end);
 
   function persist(){
     state.updatedAt = Date.now();
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
-    if (dbDoc){
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => {
-        try { await dbDoc.set(JSON.parse(JSON.stringify(state))); $("sync").textContent = "Saved to your account"; }
-        catch(e){ $("sync").textContent = "Saved on this device"; }
-      }, 400);
-    }
   }
 
   // ---------- math ----------
@@ -223,17 +360,23 @@ details[open] summary{margin-bottom:14px}
   }
 
   function analyze(){
-    const days = Object.entries(state.days).sort((a,b) => a[0] < b[0] ? -1 : 1);
+    // Days started by the tap counter stay "draft" (in progress) until saved in Log a day,
+    // so a half-finished day doesn't drag the averages or the break-even line around.
+    const days = Object.entries(state.days).filter(([,d]) => !d.draft).sort((a,b) => a[0] < b[0] ? -1 : 1);
     const nightsAuto = (state.start && state.end && state.end >= state.start) ? Math.round((parse(state.end) - parse(state.start)) / 86400000) : 0;
     const nights = String(state.nights ?? "") !== "" ? num(state.nights) : nightsAuto;
     const hasRate = String(state.lodgingRate ?? "") !== "";
     const lodgingTotal = hasRate ? num(state.lodgingRate) * nights : num(state.lodging);
-    const fixed = num(state.flight) + lodgingTotal + num(state.other);
+    const tripDays = tripDates().length;
+    const weeksAuto = Math.ceil(tripDays / 7);
+    const weeks = String(state.weeks ?? "") !== "" ? num(state.weeks) : weeksAuto;
+    const chairRate = num(state.chairRent), chairTotal = chairRate * weeks;
+    const fixed = num(state.flight) + lodgingTotal + chairTotal + num(state.other);
     let earned = 0, cuts = 0, food = 0, transport = 0;
     days.forEach(([,d]) => { earned += num(d.made); cuts += num(d.cuts); food += num(d.food); transport += num(d.transport); });
     const logged = days.length;
     const all = tripDates();
-    const remaining = all.filter(d => d >= todayISO && !state.days[d]).length;
+    const remaining = all.filter(d => d >= todayISO && !(state.days[d] && !state.days[d].draft)).length;
     const avgFood = logged ? food/logged : 0, avgTransport = logged ? transport/logged : 0;
     const estDaily = (state.estFood !== "" ? num(state.estFood) : avgFood) + (state.estTransport !== "" ? num(state.estTransport) : avgTransport);
     const spentSoFar = fixed + food + transport;
@@ -243,13 +386,20 @@ details[open] summary{margin-bottom:14px}
     const perCut = cuts ? earned/cuts : 0;
     const perDay = logged ? earned/logged : 0;
     const projectedEarned = earned + perDay*remaining;
-    return {days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
+    const profitGoal = num(state.profitGoal), hasGoal = String(state.profitGoal ?? "") !== "" && profitGoal > 0;
+    const goalTarget = goal + profitGoal, goalGap = goalTarget - earned;
+    // Hourly stats only use days that have both times.
+    let hours = 0, timedDays = 0, timedEarned = 0, timedCuts = 0;
+    days.forEach(([,d]) => { const h = dayHours(d); if (h === null) return; hours += h; timedDays++; timedEarned += num(d.made); timedCuts += num(d.cuts); });
+    const perHour = hours ? timedEarned/hours : 0, cutsPerHour = hours ? timedCuts/hours : 0;
+    return {weeks, weeksAuto, chairRate, chairTotal, hours, timedDays, perHour, cutsPerHour, profitGoal, hasGoal, goalTarget, goalGap, days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
   }
 
   // ---------- render ----------
   function render(){
     const a = analyze();
     $("nights").placeholder = String(a.nightsAuto);
+    $("weeks").placeholder = String(a.weeksAuto);
     const pct = a.goal > 0 ? Math.min(100, a.earned / a.goal * 100) : (a.earned > 0 ? 100 : 0);
     const fill = $("poleFill");
     fill.style.width = pct + "%";
@@ -257,7 +407,10 @@ details[open] summary{margin-bottom:14px}
     $("pole").setAttribute("aria-valuenow", Math.round(pct));
 
     const status = $("status"), sub = $("statusSub");
-    if (a.goal <= 0 && a.earned === 0){
+    if (!datesSet()){
+      status.textContent = "Let's get started"; status.classList.remove("win");
+      sub.textContent = "Set your trip dates and costs to get started.";
+    } else if (a.goal <= 0 && a.earned === 0){
       status.textContent = "Set your costs"; status.classList.remove("win");
       sub.textContent = "Add your flight, lodging and daily estimates to set the break-even line.";
     } else if (a.gap > 0){
@@ -270,6 +423,15 @@ details[open] summary{margin-bottom:14px}
     }
     $("legendLeft").textContent = fmt(a.earned) + " earned";
     $("legendRight").textContent = "Break even at " + fmt(a.goal);
+    $("goalHero").hidden = !a.hasGoal;
+    if (a.hasGoal){
+      const gp = a.goalTarget > 0 ? Math.min(100, a.earned / a.goalTarget * 100) : 100;
+      $("goalFill").style.width = gp + "%";
+      $("goalBar").setAttribute("aria-valuenow", Math.round(gp));
+      $("goalMark").style.left = (a.goalTarget > 0 ? Math.max(0, a.goal) / a.goalTarget * 100 : 0) + "%";
+      $("goalLeft").textContent = fmt(a.earned) + " of " + fmt(a.goalTarget) + " goal";
+      $("goalRight").textContent = "Break-even " + fmt(a.goal);
+    }
     $("tEarned").textContent = fmt(a.earned);
     $("tCost").textContent = fmt(a.goal);
     $("tCuts").textContent = a.cuts.toLocaleString("en-US");
@@ -281,6 +443,7 @@ details[open] summary{margin-bottom:14px}
     add("Flight", fmt(num(state.flight)));
     add(a.hasRate ? `Lodging (${a.nights} nights × ${fmt2(a.rate)})` : "Lodging", fmt(a.lodgingTotal));
     if (a.hasRate && a.nights) add("Every $5/night off lodging saves", fmt(5 * a.nights), "pos");
+    if (a.chairRate) add(`Chair rent (${a.weeks} week${a.weeks === 1 ? "" : "s"} × ${Number.isInteger(a.chairRate) ? fmt(a.chairRate) : fmt2(a.chairRate)})`, fmt(a.chairTotal));
     if (num(state.other)) add("Other one-time costs", fmt(num(state.other)));
     add("Food logged", fmt(a.food));
     add("Transport logged", fmt(a.transport));
@@ -289,6 +452,12 @@ details[open] summary{margin-bottom:14px}
     add("Average per cut", a.perCut ? fmt2(a.perCut) : "—");
     add("Average per day logged", a.logged ? fmt(a.perDay) : "—");
     add("Average cuts per day", a.logged ? (a.cuts/a.logged).toFixed(1) : "—");
+    add(a.timedDays && a.timedDays < a.logged ? `Total hours (${a.timedDays} of ${a.logged} days timed)` : "Total hours", a.timedDays ? fmtHrs(a.hours) : "Add in/out times");
+    if (a.timedDays){
+      add("Average hours per day", fmtHrs(a.hours/a.timedDays));
+      add("Money per hour", fmt2(a.perHour));
+      add("Cuts per hour", a.cutsPerHour.toFixed(1));
+    }
     if (a.gap > 0){
       add("Cuts needed to break even", a.perCut ? Math.ceil(a.gap/a.perCut).toLocaleString("en-US") : "—");
       add("Needed per remaining day", a.remaining ? fmt(a.gap/a.remaining) : "No days left", a.remaining ? "" : "neg");
@@ -296,10 +465,27 @@ details[open] summary{margin-bottom:14px}
     }
     add("Days logged", `${a.logged} of ${a.totalDays}`);
     add("Projected end of trip (at your pace)", a.logged ? (a.projectedNet >= 0 ? "+" : "") + fmt(a.projectedNet) : "Log a day first", a.logged ? (a.projectedNet >= 0 ? "pos" : "neg") : "");
+    if (a.hasGoal){
+      add(`Goal target (break-even + ${fmt(a.profitGoal)} profit)`, fmt(a.goalTarget));
+      if (a.goalGap > 0){
+        add("Left to reach goal", fmt(a.goalGap));
+        add("Needed per remaining day to hit goal", a.remaining ? fmt(a.goalGap/a.remaining) : "No days left", a.remaining ? "" : "neg");
+        add("Cuts needed to hit goal", a.perCut ? Math.ceil(a.goalGap/a.perCut).toLocaleString("en-US") : "—");
+        add("Hours needed to hit goal", a.perHour ? fmtHrs(a.goalGap/a.perHour) : "—");
+      } else {
+        add("Left to reach goal", "Goal reached", "pos");
+      }
+      if (!a.logged) add("Projected profit vs. goal", "Log a day first");
+      else {
+        const diff = a.projectedNet - a.profitGoal;
+        add(`Projected profit vs. ${fmt(a.profitGoal)} goal`, diff >= 0 ? "On track" : "Behind by " + fmt(-diff), diff >= 0 ? "pos" : "neg");
+      }
+    }
     $("rows").innerHTML = rows.join("");
 
     renderChart(a);
     renderDays(a);
+    renderCounter();
   }
 
   function renderChart(a){
@@ -310,11 +496,11 @@ details[open] summary{margin-bottom:14px}
     let ce = 0, cs = a.fixed; const earnPts = [], spendPts = [];
     let lastIdx = -1;
     a.all.forEach((d, i) => {
-      const day = state.days[d];
+      const day = state.days[d] && !state.days[d].draft ? state.days[d] : null;
       if (day){ ce += num(day.made); cs += num(day.food) + num(day.transport); lastIdx = i; }
       if (d <= todayISO || day){ earnPts.push([i, ce]); spendPts.push([i, cs]); }
     });
-    const maxY = Math.max(a.goal, ce, cs, 100) * 1.08;
+    const maxY = Math.max(a.goal, a.hasGoal ? a.goalTarget : 0, ce, cs, 100) * 1.08;
     const x = i => pl + (n === 1 ? (W-pl-pr)/2 : i * (W-pl-pr)/(n-1));
     const y = v => pt + (H-pt-pb) * (1 - v/maxY);
     const path = pts => pts.map((p,i) => (i?"L":"M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
@@ -329,30 +515,44 @@ details[open] summary{margin-bottom:14px}
     ticks.forEach(i => { grid += `<text x="${x(i)}" y="${H-6}" text-anchor="${i===0?"start":i===n-1?"end":"middle"}">${lbl(a.all[i])}</text>`; });
     const gy = y(a.goal).toFixed(1);
     const goalLine = a.goal > 0 ? `<line x1="${pl}" x2="${W-pr}" y1="${gy}" y2="${gy}" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 5"/>` : "";
+    const ty = y(a.goalTarget).toFixed(1);
+    const targetLine = a.hasGoal ? `<line x1="${pl}" x2="${W-pr}" y1="${ty}" y2="${ty}" stroke="var(--good)" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>` : "";
+    $("goalKey").hidden = !a.hasGoal;
     const lines = earnPts.length ? `<path d="${path(spendPts)}" fill="none" stroke="var(--red)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
       <path d="${path(earnPts)}" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>` : "";
-    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:320px;display:block" role="img" aria-label="Cumulative earnings versus spending across the trip">${grid}${goalLine}${lines}</svg>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:320px;display:block" role="img" aria-label="Cumulative earnings versus spending across the trip">${grid}${goalLine}${targetLine}${lines}</svg>`;
   }
 
   function renderDays(a){
     const ul = $("days");
-    if (!a.days.length){ ul.innerHTML = '<li style="display:block"><p class="empty">No days yet. Log your first day above and the numbers start working.</p></li>'; return; }
-    ul.innerHTML = a.days.slice().reverse().map(([d, v]) => {
+    const all = Object.entries(state.days).sort((x,y) => x[0] < y[0] ? 1 : -1);
+    if (!all.length){ ul.innerHTML = '<li style="display:block"><p class="empty">No days yet. Log your first day above and the numbers start working.</p></li>'; return; }
+    const chip = dt => `<div class="date-chip">${dt.getDate()}<small>${dt.toLocaleDateString("en-US",{month:"short"})} · ${dt.toLocaleDateString("en-US",{weekday:"short"})}</small></div>`;
+    const actions = d => `<div class="day-actions"><button class="ghost" data-edit="${d}">Edit</button><button class="ghost" data-del="${d}">Delete</button></div>`;
+    ul.innerHTML = all.map(([d, v]) => {
       const dt = parse(d);
+      if (v.draft) return `<li>
+        ${chip(dt)}
+        <div class="day-main">${num(v.cuts)} cuts counted${num(v.made) ? " · " + money(num(v.made)) + " so far" : ""}
+          <span class="sub">In progress · add food and transport in Log a day</span></div>
+        <div class="day-net" style="color:var(--muted)">—</div>
+        ${actions(d)}
+      </li>`;
       const net = num(v.made) - num(v.food) - num(v.transport);
       const per = num(v.cuts) ? fmt2(num(v.made)/num(v.cuts)) + "/cut" : "";
+      const hrs = dayHours(v);
       return `<li>
-        <div class="date-chip">${dt.getDate()}<small>${dt.toLocaleDateString("en-US",{month:"short"})} · ${dt.toLocaleDateString("en-US",{weekday:"short"})}</small></div>
+        ${chip(dt)}
         <div class="day-main">${num(v.cuts)} cuts · ${fmt(num(v.made))}${per ? " · "+per : ""}
-          <span class="sub">Food ${fmt(num(v.food))} · Transport ${fmt(num(v.transport))}</span></div>
+          <span class="sub">Food ${fmt(num(v.food))} · Transport ${fmt(num(v.transport))}</span>${hrs !== null ? `<span class="sub">${fmtHrs(hrs)} · ${fmtTime(v.inAt)}–${fmtTime(v.outAt)}</span>` : ""}</div>
         <div class="day-net" style="color:${net>=0?"var(--good)":"var(--red)"}">${net>=0?"+":""}${fmt(net)}</div>
-        <div class="day-actions"><button class="ghost" data-edit="${d}">Edit</button><button class="ghost" data-del="${d}">Delete</button></div>
+        ${actions(d)}
       </li>`;
     }).join("");
   }
 
   // ---------- forms ----------
-  const costFields = ["start","end","flight","lodgingRate","nights","other","estFood","estTransport"];
+  const costFields = ["start","end","flight","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"];
   function fillCosts(){ costFields.forEach(k => $(k).value = state[k] ?? ""); }
   function hasCosts(){ return num(state.flight) || num(state.lodging) || num(state.other); }
 
@@ -366,15 +566,16 @@ details[open] summary{margin-bottom:14px}
       state[k] = (k === "start" || k === "end") ? v : (v === "" ? "" : String(num(v)));
     });
     persist(); render(); flash("costsToast","Trip costs saved");
-    $("costsBox").open = false;
+    $("costsBox").open = !datesSet();
   });
 
   function loadDayIntoForm(d){
     const v = state.days[d] || {};
     $("dDate").value = d;
-    $("dCuts").value = v.cuts ?? ""; $("dMade").value = v.made ?? "";
+    $("dCuts").value = v.cuts ?? ""; $("dMade").value = v.draft && !num(v.made) ? "" : (v.made ?? "");
     $("dTransport").value = v.transport ?? ""; $("dFood").value = v.food ?? "";
-    $("logTitle").textContent = state.days[d] ? "Edit day" : "Log a day";
+    $("dIn").value = v.inAt || ""; $("dOut").value = v.outAt || "";
+    $("logTitle").textContent = state.days[d] && !state.days[d].draft ? "Edit day" : "Log a day";
   }
   $("dDate").addEventListener("change", e => { if (e.target.value) loadDayIntoForm(e.target.value); });
 
@@ -382,8 +583,24 @@ details[open] summary{margin-bottom:14px}
     const d = $("dDate").value;
     if (!d){ $("dayToast").style.color="var(--red)"; flash("dayToast","Pick a date first."); return; }
     $("dayToast").style.color = "";
-    const existed = !!state.days[d];
-    state.days[d] = { cuts: num($("dCuts").value), made: num($("dMade").value), transport: num($("dTransport").value), food: num($("dFood").value) };
+    const existed = !!(state.days[d] && !state.days[d].draft);
+    const inAt = $("dIn").value, outAt = $("dOut").value;
+    if (inAt && inAt === outAt){ $("dayToast").style.color="var(--red)"; flash("dayToast","In and out are the same time."); return; }
+    if (!!inAt !== !!outAt){ $("dayToast").style.color="var(--red)"; flash("dayToast", inAt ? "Add the time you finished too, or clear In at." : "Add the time you started too, or clear Out at."); return; }
+    // Days with tapped cuts: Money made follows the taps unless a different number is typed here.
+    const prev = state.days[d], log = prev && Array.isArray(prev.cutLog) ? prev.cutLog : null;
+    const rawMade = $("dMade").value.trim();
+    let made = num(rawMade), madeManual = false;
+    if (log && log.length){
+      const tally = tallySum(log);
+      if (rawMade === "") made = tally;
+      else if (prev.madeManual) madeManual = r2(made) !== r2(tally);
+      else madeManual = r2(made) !== r2(num(prev.made));
+    }
+    const entry = { cuts: num($("dCuts").value), made, transport: num($("dTransport").value), food: num($("dFood").value), inAt, outAt };
+    if (log) entry.cutLog = log;
+    if (madeManual) entry.madeManual = true;
+    state.days[d] = entry;
     persist(); render();
     flash("dayToast", existed ? "Day updated" : "Day saved");
     const next = parse(d); next.setDate(next.getDate()+1);
@@ -402,38 +619,293 @@ details[open] summary{margin-bottom:14px}
     }
   });
 
+  // ---------- tap counter ----------
+  const today = () => iso(new Date());
+
+  const nowHHMM = () => { const t = new Date(); return String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0"); };
+  const money = n => Number.isInteger(n) ? fmt(n) : fmt2(n);
+  const tallySum = log => r2(log.reduce((t, c) => t + (c.amount == null ? 0 : num(c.amount)), 0));
+
+  function renderCounter(){
+    const d = today(), v = state.days[d];
+    const n = v ? num(v.cuts) : 0;
+    const log = v && Array.isArray(v.cutLog) ? v.cutLog : [];
+    $("cCount").textContent = n;
+    $("cUnit").textContent = n === 1 ? "cut" : "cuts";
+    $("cMoney").textContent = v && (n || num(v.made)) ? "· " + money(num(v.made)) : "";
+    $("cMinus").disabled = n <= 0;
+    const notes = [];
+    if (state.start && state.end && (d < state.start || d > state.end)) notes.push("Today is outside your trip dates, but the cuts still count.");
+    if (v && v.madeManual) notes.push(`Money made was edited by hand in Log a day, so taps don't change it (taps add up to ${money(tallySum(log))}).`);
+    else if (v && v.draft) notes.push("Add food and transport in Log a day when you finish.");
+    $("cNote").textContent = notes.join(" ");
+    $("cutList").hidden = !log.length;
+    $("cutListTitle").textContent = `Today's cuts (${log.length})`;
+    $("cuts").innerHTML = log.map((c, i) => ({c, i})).reverse().map(({c, i}) =>
+      `<li><button class="cut-row" data-cut="${i}"><span class="t">${c.time ? fmtTime(c.time) : "—"}</span><span>${c.amount == null ? '<span class="none">No amount</span>' : money(num(c.amount))}<span class="fix">Fix</span></span></button></li>`).join("");
+  }
+
+  function replay(el, cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+  // Every change to today's taps goes through here so cuts/made stay in step.
+  function changeTally(fn, opts = {}){
+    const d = today();
+    let v = state.days[d];
+    if (!v){ v = state.days[d] = { cuts: 0, made: 0, cutLog: [], draft: true }; }
+    if (!Array.isArray(v.cutLog)) v.cutLog = [];
+    const delta = fn(v);
+    if (!delta) return;
+    v.cuts = Math.max(0, num(v.cuts) + (delta.cuts || 0));
+    if (!v.madeManual) v.made = Math.max(0, r2(num(v.made) + (delta.made || 0)));
+    if (v.draft && !v.cuts && !v.cutLog.length) delete state.days[d];
+    persist(); render();
+    // Keep Log a day in step if it's showing today
+    if ($("dDate").value === d){
+      const w = state.days[d];
+      $("dCuts").value = w ? w.cuts : "";
+      if (!w || !w.madeManual) $("dMade").value = w && num(w.made) ? w.made : "";
+    }
+    replay($("cCount"), "bump");
+    if (opts.added) replay($("cPlus"), "pulse");
+    try { if (navigator.vibrate) navigator.vibrate(opts.added ? 15 : [10, 40, 10]); } catch(e){}
+  }
+
+  const addCut = amount => changeTally(v => { v.cutLog.push({ time: nowHHMM(), amount }); return { cuts: 1, made: amount || 0 }; }, { added: true });
+  const removeCut = i => changeTally(v => {
+    if (num(v.cuts) <= 0 && !v.cutLog.length) return null;
+    const idx = i == null ? v.cutLog.length - 1 : i;
+    const [c] = idx >= 0 ? v.cutLog.splice(idx, 1) : [null];   // days counted before per-cut entries just lose one from the count
+    return { cuts: -1, made: -(c && c.amount != null ? num(c.amount) : 0) };
+  });
+  const setCutAmount = (i, amount) => changeTally(v => {
+    const c = v.cutLog[i]; if (!c) return null;
+    const old = c.amount == null ? 0 : num(c.amount);
+    c.amount = amount;
+    return { cuts: 0, made: (amount || 0) - old };
+  });
+
+  // Most-used prices across every tapped cut (up to 4), shown low to high.
+  function quickPrices(){
+    const seen = new Map(); let k = 0;
+    Object.keys(state.days).sort().forEach(d => (state.days[d].cutLog || []).forEach(c => {
+      if (c.amount == null || !(num(c.amount) > 0)) return;
+      const a = r2(num(c.amount)), e = seen.get(a) || { a, n: 0, last: 0 };
+      e.n++; e.last = ++k; seen.set(a, e);
+    }));
+    return [...seen.values()].sort((x, y) => y.n - x.n || y.last - x.last).slice(0, 4).map(e => e.a).sort((x, y) => x - y);
+  }
+
+  // ----- price sheet -----
+  let sheet = null;   // { mode: "add" | "edit", index, done }
+  let sheetClosedAt = 0;
+  function openSheet(mode, index){
+    if (sheet) return;   // ignore extra taps while it's open
+    if (Date.now() - sheetClosedAt < 400) return;   // second half of a double-tap that closed it
+    sheet = { mode, index, done: false, openedAt: Date.now() };
+    const c = mode === "edit" ? (state.days[today()].cutLog || [])[index] : null;
+    $("sheetTitle").textContent = mode === "edit" ? `Fix cut${c && c.time ? " at " + fmtTime(c.time) : ""}` : "How much did they pay?";
+    $("sheetSkip").textContent = mode === "edit" ? "No amount" : "Skip — no amount";
+    $("sheetDelete").hidden = mode !== "edit";
+    const prices = quickPrices();
+    $("quick").innerHTML = prices.map(a => `<button data-price="${a}">${money(a)}</button>`).join("");
+    $("quickHint").hidden = prices.length > 0;
+    $("sheetAmt").value = c && c.amount != null ? c.amount : "";
+    $("sheetErr").textContent = "";
+    $("sheetBack").hidden = false;
+    document.body.classList.add("sheet-open");
+    fitSheet();
+    $("sheetAmt").focus();   // must happen inside the tap so iOS opens the keypad
+  }
+  function closeSheet(){
+    if (!sheet) return;
+    sheet = null; sheetClosedAt = Date.now();
+    $("sheetBack").hidden = true;
+    document.body.classList.remove("sheet-open");
+    $("sheetAmt").blur();
+    document.querySelector(".sheet").style.marginBottom = "";
+  }
+  function commitSheet(amount){
+    if (!sheet || sheet.done) return;   // one save per opening, however fast the taps come
+    sheet.done = true;
+    const { mode, index } = sheet;
+    closeSheet();
+    if (mode === "edit") setCutAmount(index, amount); else addCut(amount);
+  }
+  // Keep the sheet above the iOS keyboard (the layout viewport doesn't shrink there).
+  function fitSheet(){
+    const vv = window.visualViewport; if (!vv || !sheet) return;
+    const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.querySelector(".sheet").style.marginBottom = hidden ? hidden + "px" : "";
+  }
+  if (window.visualViewport){ visualViewport.addEventListener("resize", fitSheet); visualViewport.addEventListener("scroll", fitSheet); }
+
+  $("cPlus").addEventListener("click", () => openSheet("add"));
+  $("cMinus").addEventListener("click", () => removeCut(null));
+  $("cuts").addEventListener("click", e => { const b = e.target.closest("[data-cut]"); if (b) openSheet("edit", Number(b.dataset.cut)); });
+  $("quick").addEventListener("click", e => { const b = e.target.closest("[data-price]"); if (b) commitSheet(num(b.dataset.price)); });
+  $("sheetSave").addEventListener("click", () => {
+    const raw = $("sheetAmt").value.trim();
+    if (raw === "" || !isFinite(parseFloat(raw.replace(/[$,\s]/g,"")))){ $("sheetErr").textContent = "Type an amount, or tap Skip."; $("sheetAmt").focus(); return; }
+    commitSheet(r2(Math.max(0, num(raw))));
+  });
+  $("sheetAmt").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("sheetSave").click(); } });
+  $("sheetSkip").addEventListener("click", () => commitSheet(null));
+  $("sheetDelete").addEventListener("click", () => {
+    if (!sheet || sheet.done) return;
+    sheet.done = true; const i = sheet.index; closeSheet(); removeCut(i);
+  });
+  $("sheetCancel").addEventListener("click", closeSheet);
+  // Taps anywhere in the sheet (quick prices, stray taps on the backdrop) keep focus in the amount field,
+  // so the keypad doesn't drop and jump the layout mid-tap.
+  $("sheetBack").addEventListener("mousedown", e => { if (e.target !== $("sheetAmt")) e.preventDefault(); });
+  // Tapping outside cancels, but not in the first moment after opening (stray rapid taps on +1 land here).
+  $("sheetBack").addEventListener("click", e => { if (e.target === e.currentTarget && sheet && Date.now() - sheet.openedAt > 500) closeSheet(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) renderCounter(); });
+
+  // ---------- backup ----------
+  // items: [{name, type, text}]
+  async function saveFiles(items){
+    const files = items.map(f => new File([f.text], f.name, {type: f.type}));
+    // On phones the share sheet is the reliable way to get files into Files / Drive / email.
+    try {
+      if (matchMedia("(pointer:coarse)").matches && navigator.canShare && navigator.canShare({files})){
+        await navigator.share({files, title: items[0].name});
+        return true;
+      }
+    } catch(e){ if (e && e.name === "AbortError") return false; }
+    for (let k = 0; k < files.length; k++){
+      if (k) await new Promise(r => setTimeout(r, 400));
+      const url = URL.createObjectURL(files[k]);
+      const a = document.createElement("a");
+      a.href = url; a.download = files[k].name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+    return true;
+  }
+  const saveFile = (name, type, text) => saveFiles([{name, type, text}]);
+
+  const csvCell = v => { const t = String(v ?? ""); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t; };
+  const csvRow = cells => cells.map(csvCell).join(",");
+
+  function buildCsv(){
+    const a = analyze();
+    const lines = [csvRow(["Date","In at","Out at","Hours","Cuts","Money made","Transport","Food","Day net"])];
+    a.days.forEach(([d, v]) => {
+      const made = num(v.made), tr = num(v.transport), fd = num(v.food);
+      const h = dayHours(v);
+      lines.push(csvRow([d, h === null ? "" : v.inAt, h === null ? "" : v.outAt, h === null ? "" : r2(h), num(v.cuts), r2(made), r2(tr), r2(fd), r2(made - tr - fd)]));
+    });
+    lines.push(csvRow(["Total", "", "", a.timedDays ? r2(a.hours) : "", a.cuts, r2(a.earned), r2(a.transport), r2(a.food), r2(a.earned - a.transport - a.food)]));
+    lines.push("");
+    lines.push(csvRow(["Trip summary",""]));
+    const sum = [
+      ["First day", state.start], ["Last day", state.end],
+      ["Flight", r2(num(state.flight))],
+      ["Lodging per night", a.hasRate ? r2(a.rate) : ""],
+      ["Nights", a.nights],
+      ["Lodging total", r2(a.lodgingTotal)],
+      ["Chair rent per week", r2(a.chairRate)],
+      ["Weeks", a.weeks],
+      ["Chair rent total", r2(a.chairTotal)],
+      ["Other one-time costs", r2(num(state.other))],
+      ["Food per day (estimate)", state.estFood],
+      ["Transport per day (estimate)", state.estTransport],
+      ["Fixed costs", r2(a.fixed)],
+      ["Earned", r2(a.earned)],
+      ["Spent so far", r2(a.spentSoFar)],
+      ["Still to spend", r2(a.stillToSpend)],
+      ["Break-even goal", r2(a.goal)],
+      [a.gap > 0 ? "Still to go" : "Ahead by", r2(Math.abs(a.gap))],
+      ["Profit goal", a.hasGoal ? r2(a.profitGoal) : ""],
+      ["Goal target", a.hasGoal ? r2(a.goalTarget) : ""],
+      ["Left to reach goal", a.hasGoal ? r2(Math.max(0, a.goalGap)) : ""],
+      ["Total hours", a.timedDays ? r2(a.hours) : ""],
+      ["Days with times", a.timedDays],
+      ["Money per hour", a.timedDays ? r2(a.perHour) : ""],
+      ["Cuts per hour", a.timedDays ? r2(a.cutsPerHour) : ""],
+      ["Days logged", a.logged + " of " + a.totalDays],
+      ["Exported", todayISO]
+    ];
+    sum.forEach(row => lines.push(csvRow(row)));
+    return lines.join("\r\n") + "\r\n";
+  }
+
+  // Second CSV: one row per tapped cut (in-progress days included).
+  function buildCutsCsv(){
+    const lines = [csvRow(["Date","Time","Amount"])];
+    Object.keys(state.days).sort().forEach(d => (state.days[d].cutLog || []).forEach(c =>
+      lines.push(csvRow([d, c.time || "", c.amount == null ? "" : r2(num(c.amount))]))));
+    return lines.join("\r\n") + "\r\n";
+  }
+
+  $("exportCsv").addEventListener("click", async () => {
+    $("backupToast").style.color = "";
+    const ok = await saveFiles([
+      {name: `chair-count-${todayISO}.csv`, type: "text/csv", text: buildCsv()},
+      {name: `chair-count-cuts-${todayISO}.csv`, type: "text/csv", text: buildCutsCsv()}
+    ]);
+    if (ok) flash("backupToast","CSVs exported (days + each cut)");
+  });
+
+  $("downloadBackup").addEventListener("click", async () => {
+    $("backupToast").style.color = "";
+    if (await saveFile(`chair-count-backup-${todayISO}.json`, "application/json", JSON.stringify(state, null, 2))) flash("backupToast","Backup downloaded");
+  });
+
+  $("restoreBackup").addEventListener("click", () => $("restoreFile").click());
+
+  function cleanBackup(raw){
+    if (!raw || typeof raw !== "object" || Array.isArray(raw) || !raw.days || typeof raw.days !== "object") return null;
+    const out = defaults();
+    if (!("lodgingRate" in raw)) out.lodgingRate = LEGACY_LODGING_RATE;
+    ["start","end"].forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(raw[k] ?? "")) out[k] = raw[k]; });
+    ["flight","lodging","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"].forEach(k => {
+      if (k in raw) out[k] = String(raw[k] ?? "") === "" ? "" : String(num(raw[k]));
+    });
+    Object.entries(raw.days).forEach(([d, v]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !v || typeof v !== "object") return;
+      const inAt = TIME_RE.test(v.inAt || "") ? v.inAt : "", outAt = TIME_RE.test(v.outAt || "") ? v.outAt : "";
+      const log = Array.isArray(v.cutLog) ? v.cutLog.filter(c => c && typeof c === "object").map(c => ({
+        time: TIME_RE.test(c.time || "") ? c.time : "",
+        amount: c.amount == null || c.amount === "" ? null : r2(Math.max(0, num(c.amount)))
+      })) : null;
+      let day;
+      if (v.draft === true) day = { cuts: num(v.cuts), made: num(v.made), draft: true };
+      else day = { cuts: num(v.cuts), made: num(v.made), transport: num(v.transport), food: num(v.food), inAt: inAt && outAt ? inAt : "", outAt: inAt && outAt ? outAt : "" };
+      if (log) day.cutLog = log;
+      if (v.madeManual === true) day.madeManual = true;
+      out.days[d] = day;
+    });
+    return out;
+  }
+
+  $("restoreFile").addEventListener("change", async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    let next = null;
+    try { next = cleanBackup(JSON.parse(await file.text())); } catch(err){}
+    if (!next){ $("backupToast").style.color = "var(--red)"; flash("backupToast","That file isn't a Chair Count backup."); return; }
+    $("backupToast").style.color = "";
+    const n = Object.keys(next.days).length, cur = Object.keys(state.days).length;
+    if (!confirm(`Restore this backup? It has ${n} logged day${n===1?"":"s"} and will replace everything on this phone (${cur} logged day${cur===1?"":"s"}). This can't be undone.`)) return;
+    state = next;
+    persist();
+    fillCosts(); $("costsBox").open = !hasCosts() || !datesSet(); loadDayIntoForm(todayISO); render();
+    flash("backupToast","Backup restored");
+  });
+
   // ---------- boot ----------
   fillCosts();
-  $("costsBox").open = !hasCosts();
-  loadDayIntoForm(state.days[todayISO] ? todayISO : todayISO);
+  $("costsBox").open = !hasCosts() || !datesSet();
+  loadDayIntoForm(todayISO);
   render();
 
-  // Account sync (falls back to this device if unavailable)
-  (async () => {
-    try {
-      if (!window.claude || !window.claude.use) return;
-      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-      if (!db || !user) return;
-      const id = await user.id();
-      if (!id) return;
-      const ref = db.doc("data/users/" + id + "/boston-trip");
-      const snap = await ref.get();
-      dbDoc = ref;
-      if (snap.exists){
-        const remote = snap.data() || {};
-        if ((remote.updatedAt || 0) >= (state.updatedAt || 0)){
-          state = Object.assign(defaults(), JSON.parse(JSON.stringify(remote)));
-          try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
-          fillCosts(); $("costsBox").open = !hasCosts(); loadDayIntoForm($("dDate").value || todayISO); render();
-        } else {
-          await ref.set(JSON.parse(JSON.stringify(state)));
-        }
-      } else if (state.updatedAt){
-        await ref.set(JSON.parse(JSON.stringify(state)));
-      }
-      $("sync").textContent = "Saved to your account";
-    } catch(e){ dbDoc = dbDoc || null; }
-  })();
+  if ("serviceWorker" in navigator){
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
 })();
 </script>
 </body>
