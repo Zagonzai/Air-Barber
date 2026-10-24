@@ -70,6 +70,26 @@ h2{font-size:1.45rem;margin-bottom:12px}
 .trio b{display:block;font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1.1}
 .trio span{font-size:.8rem;color:var(--muted)}
 
+/* Lodging nights calendar */
+.nights-cal .cal-sum{margin:2px 0 10px;font-weight:600;font-size:.95rem}
+.cal-month{font-family:var(--display);font-weight:800;font-size:1.05rem;margin:10px 0 4px}
+.cal-month:first-child{margin-top:0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-wd{font-size:.68rem;font-weight:600;color:var(--muted);text-align:center;padding-bottom:2px}
+.night{min-height:50px;min-width:0;padding:4px 0;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-weight:700;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.night b{font-family:var(--display);font-size:1.1rem;line-height:1}
+.night small{font-size:.62rem;font-weight:600;color:var(--muted);line-height:1.1;max-width:100%;overflow:hidden;text-overflow:clip;white-space:nowrap}
+.night.away{background:transparent;border-style:dashed;color:var(--muted);opacity:.75}
+.night.away b{text-decoration:line-through;text-decoration-thickness:2px}
+.night.custom{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.night.custom small{color:var(--blue)}
+.night.sel{outline:3px solid var(--blue);outline-offset:1px}
+.night.range-start{outline:3px dashed var(--red);outline-offset:1px}
+.cal-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.cal-tools .ghost{padding:0 4px}
+.cal-hint{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+.night-edit{margin-top:10px}
+
 /* Tap counter */
 .counter{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 16px;align-items:end}
 .counter .tap{grid-column:1/-1}
@@ -232,13 +252,21 @@ details[open] summary{margin-bottom:14px}
         <div><label for="other">Other one-time costs</label><div class="money"><input id="other" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="lodgingRate">Lodging per night</label><div class="money"><input id="lodgingRate" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="nights">Nights</label><input id="nights" inputmode="numeric" placeholder="0"></div>
+        <div class="span nights-cal">
+          <label id="calLabel">Lodging nights</label>
+          <p class="cal-sum" id="calSum"></p>
+          <div id="cal" aria-labelledby="calLabel"></div>
+          <div class="night-edit" id="nightEdit" hidden><label for="nightCost" id="nightCostLabel">Cost for this night</label><div class="money"><input id="nightCost" inputmode="decimal" placeholder="0"></div></div>
+          <div class="cal-tools" id="calTools"><button class="ghost" id="rangeBtn" type="button">Mark range away</button><button class="ghost" id="rangeCancel" type="button" hidden>Cancel</button></div>
+          <p class="cal-hint" id="calHint">Tap a night to switch Staying → Away → Custom cost → Staying.</p>
+        </div>
         <div><label for="chairRent">Chair rent per week</label><div class="money"><input id="chairRent" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="weeks">Weeks</label><input id="weeks" inputmode="numeric" placeholder="0"></div>
         <div><label for="estFood">Food per day (estimate)</label><div class="money"><input id="estFood" inputmode="decimal" placeholder="0"></div></div>
         <div><label for="estTransport">Transport per day (estimate)</label><div class="money"><input id="estTransport" inputmode="decimal" placeholder="0"></div></div>
         <div class="span"><label for="profitGoal">Profit goal (take-home after every cost)</label><div class="money"><input id="profitGoal" inputmode="decimal" placeholder="0"></div></div>
       </div>
-      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights and weeks fill in from your dates; type a number to override them. Put supplies or anything else you pay once under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
+      <p class="note">Daily estimates cover the days you haven't logged yet, so the break-even line includes money you're still going to spend. Leave them blank and the app uses your logged averages. Nights fills in from the nights you're staying, and weeks from your dates; type a number to override them. Put supplies or anything else you pay once under other one-time costs. Profit goal is what you want to take home after the whole trip is paid for.</p>
       <button class="primary" id="saveCosts">Save trip costs</button>
       <div class="toast" id="costsToast" aria-live="polite"></div>
     </details>
@@ -314,6 +342,7 @@ details[open] summary{margin-bottom:14px}
   const fmt = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
   const fmt2 = n => (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
   const r2 = n => Math.round(n*100)/100;
+  const money = n => Number.isInteger(n) ? fmt(n) : fmt2(n);
   const num = v => { const n = parseFloat(String(v ?? "").replace(/[$,\s]/g,"")); return isFinite(n) ? n : 0; };
   const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
@@ -332,7 +361,7 @@ details[open] summary{margin-bottom:14px}
 
   // New users start completely blank. Saved data is loaded on top of this untouched.
   function defaults(){
-    return {start:"", end:"", flight:"", lodging:"", lodgingRate:"", nights:"", chairRent:"", weeks:"", other:"", estFood:"", estTransport:"", profitGoal:"", days:{}, updatedAt:0};
+    return {start:"", end:"", flight:"", lodging:"", lodgingRate:"", nights:"", chairRent:"", weeks:"", other:"", estFood:"", estTransport:"", profitGoal:"", nightMarks:{}, days:{}, updatedAt:0};
   }
 
   let state = defaults();
@@ -340,7 +369,7 @@ details[open] summary{margin-bottom:14px}
   const LEGACY_LODGING_RATE = "45";
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw){ const saved = JSON.parse(raw); state = Object.assign(defaults(), saved); if (!("lodgingRate" in saved)) state.lodgingRate = LEGACY_LODGING_RATE; }
+    if (raw){ const saved = JSON.parse(raw); state = Object.assign(defaults(), saved); if (!("lodgingRate" in saved)) state.lodgingRate = LEGACY_LODGING_RATE; if (!state.nightMarks || typeof state.nightMarks !== "object") state.nightMarks = {}; }
   } catch(e){}
   const datesSet = () => !!(state.start && state.end);
 
@@ -359,14 +388,30 @@ details[open] summary{margin-bottom:14px}
     return out;
   }
 
+  // Nights of the trip: first day through the night before the last day.
+  function tripNights(start, end){
+    const out = [];
+    if (!start || !end || end <= start) return out;
+    for (let d = parse(start), e = parse(end); d < e && out.length < 400; d.setDate(d.getDate()+1)) out.push(iso(d));
+    return out;
+  }
+  // Only nights that aren't plain "staying" are stored: {s:"away"} or {s:"custom", cost}.
+  function nightStats(start, end, marks){
+    const list = tripNights(start, end);
+    let away = 0, custom = 0, customSum = 0;
+    list.forEach(d => { const m = marks && marks[d]; if (!m) return; if (m.s === "away") away++; else if (m.s === "custom"){ custom++; customSum += num(m.cost); } });
+    return { list, staying: list.length - away - custom, away, custom, customSum: r2(customSum) };
+  }
+
   function analyze(){
     // Days started by the tap counter stay "draft" (in progress) until saved in Log a day,
     // so a half-finished day doesn't drag the averages or the break-even line around.
     const days = Object.entries(state.days).filter(([,d]) => !d.draft).sort((a,b) => a[0] < b[0] ? -1 : 1);
-    const nightsAuto = (state.start && state.end && state.end >= state.start) ? Math.round((parse(state.end) - parse(state.start)) / 86400000) : 0;
+    const ns = nightStats(state.start, state.end, state.nightMarks);
+    const nightsAuto = ns.staying;
     const nights = String(state.nights ?? "") !== "" ? num(state.nights) : nightsAuto;
     const hasRate = String(state.lodgingRate ?? "") !== "";
-    const lodgingTotal = hasRate ? num(state.lodgingRate) * nights : num(state.lodging);
+    const lodgingTotal = (hasRate ? num(state.lodgingRate) * nights : num(state.lodging)) + ns.customSum;
     const tripDays = tripDates().length;
     const weeksAuto = Math.ceil(tripDays / 7);
     const weeks = String(state.weeks ?? "") !== "" ? num(state.weeks) : weeksAuto;
@@ -392,13 +437,14 @@ details[open] summary{margin-bottom:14px}
     let hours = 0, timedDays = 0, timedEarned = 0, timedCuts = 0;
     days.forEach(([,d]) => { const h = dayHours(d); if (h === null) return; hours += h; timedDays++; timedEarned += num(d.made); timedCuts += num(d.cuts); });
     const perHour = hours ? timedEarned/hours : 0, cutsPerHour = hours ? timedCuts/hours : 0;
-    return {weeks, weeksAuto, chairRate, chairTotal, hours, timedDays, perHour, cutsPerHour, profitGoal, hasGoal, goalTarget, goalGap, days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
+    return {weeks, weeksAuto, chairRate, chairTotal, hours, timedDays, perHour, cutsPerHour, profitGoal, hasGoal, goalTarget, goalGap, days, fixed, nights, nightsAuto, hasRate, lodgingTotal, rate: num(state.lodgingRate), nightsAway: ns.away, nightsCustom: ns.custom, customSum: ns.customSum, customNights: ns.list.filter(d => state.nightMarks[d] && state.nightMarks[d].s === "custom"), earned, cuts, food, transport, logged, remaining, totalDays:all.length, estDaily, spentSoFar, stillToSpend, goal, gap, perCut, perDay, projectedNet: projectedEarned - goal, all};
   }
 
   // ---------- render ----------
   function render(){
     const a = analyze();
     $("nights").placeholder = String(a.nightsAuto);
+    renderCal();
     $("weeks").placeholder = String(a.weeksAuto);
     const pct = a.goal > 0 ? Math.min(100, a.earned / a.goal * 100) : (a.earned > 0 ? 100 : 0);
     const fill = $("poleFill");
@@ -441,7 +487,8 @@ details[open] summary{margin-bottom:14px}
     const add = (k, v, cls) => rows.push(`<div><dt>${k}</dt><dd${cls?` class="${cls}"`:""}>${v}</dd></div>`);
     add("Spent so far", fmt(a.spentSoFar));
     add("Flight", fmt(num(state.flight)));
-    add(a.hasRate ? `Lodging (${a.nights} nights × ${fmt2(a.rate)})` : "Lodging", fmt(a.lodgingTotal));
+    const extraNights = (a.nightsAway ? `, ${a.nightsAway} away` : "") + (a.nightsCustom ? `, ${a.nightsCustom} custom` : "");
+    add(a.hasRate ? `Lodging (${a.nights} night${a.nights === 1 ? "" : "s"} × ${money(a.rate)}${extraNights})` : "Lodging" + (extraNights ? ` (${extraNights.slice(2)})` : ""), fmt(a.lodgingTotal));
     if (a.hasRate && a.nights) add("Every $5/night off lodging saves", fmt(5 * a.nights), "pos");
     if (a.chairRate) add(`Chair rent (${a.weeks} week${a.weeks === 1 ? "" : "s"} × ${Number.isInteger(a.chairRate) ? fmt(a.chairRate) : fmt2(a.chairRate)})`, fmt(a.chairTotal));
     if (num(state.other)) add("Other one-time costs", fmt(num(state.other)));
@@ -553,7 +600,85 @@ details[open] summary{margin-bottom:14px}
 
   // ---------- forms ----------
   const costFields = ["start","end","flight","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"];
-  function fillCosts(){ costFields.forEach(k => $(k).value = state[k] ?? ""); }
+  // Calendar edits work on a copy and are saved with "Save trip costs", like the other fields.
+  let nightDraft = {}, selNight = null, rangeMode = null;   // rangeMode: {first: date|null}
+  function fillCosts(){
+    costFields.forEach(k => $(k).value = state[k] ?? "");
+    nightDraft = JSON.parse(JSON.stringify(state.nightMarks || {}));
+    selNight = null; rangeMode = null;
+    renderCal();
+  }
+
+  function renderCal(){
+    const start = $("start").value, end = $("end").value;
+    const ns = nightStats(start, end, nightDraft);
+    const cal = $("cal");
+    if (!ns.list.length){
+      cal.innerHTML = '<p class="empty" style="font-size:.9rem">Set your first and last day to mark nights.</p>';
+      $("calSum").textContent = ""; $("calTools").hidden = true; $("calHint").hidden = true; $("nightEdit").hidden = true;
+      return;
+    }
+    $("calTools").hidden = false; $("calHint").hidden = false;
+    const rateRaw = $("lodgingRate").value.trim(), rate = num(rateRaw);
+    const typedNights = $("nights").value.trim();
+    const used = typedNights !== "" ? num(typedNights) : ns.staying;
+    const total = (rateRaw !== "" ? rate * used : num(state.lodging)) + ns.customSum;
+    $("calSum").textContent = `${ns.staying} night${ns.staying === 1 ? "" : "s"} staying` + (ns.away ? ` · ${ns.away} away` : "") + (ns.custom ? ` · ${ns.custom} custom` : "") + ` · ${money(r2(total))} total` + (typedNights !== "" && used !== ns.staying ? ` (using the ${used} nights you typed)` : "");
+    $("nights").placeholder = String(ns.staying);
+    // One small grid per month, Sunday first
+    const wd = ["S","M","T","W","T","F","S"].map(x => `<div class="cal-wd" aria-hidden="true">${x}</div>`).join("");
+    const months = [];
+    ns.list.forEach(d => { const k = d.slice(0,7); if (!months.length || months[months.length-1].k !== k) months.push({ k, days: [] }); months[months.length-1].days.push(d); });
+    cal.innerHTML = months.map(m => {
+      const first = parse(m.days[0]);
+      const blanks = '<div></div>'.repeat(first.getDay());
+      const cells = m.days.map(d => {
+        const mk = nightDraft[d], dt = parse(d);
+        const cls = mk ? mk.s : "stay";
+        const label = !mk ? (rateRaw !== "" ? money(rate) : "Stay") : mk.s === "away" ? "Away" : (String(mk.cost ?? "") === "" ? "$?" : money(num(mk.cost)));
+        const desc = dt.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}) + ": " + (!mk ? "staying" : mk.s === "away" ? "away" : "custom " + label);
+        return `<button type="button" class="night ${cls}${selNight === d ? " sel" : ""}${rangeMode && rangeMode.first === d ? " range-start" : ""}" data-night="${d}" aria-label="${desc}"><b>${dt.getDate()}</b><small>${label}</small></button>`;
+      }).join("");
+      return `<div class="cal-month">${first.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div><div class="cal-grid">${wd}${blanks}${cells}</div>`;
+    }).join("");
+    const sel = selNight && nightDraft[selNight] && nightDraft[selNight].s === "custom" && ns.list.includes(selNight) ? selNight : null;
+    $("nightEdit").hidden = !sel;
+    if (sel){
+      $("nightCostLabel").textContent = "Cost for the night of " + parse(sel).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+      if (document.activeElement !== $("nightCost")) $("nightCost").value = nightDraft[sel].cost ?? "";
+    }
+    $("rangeBtn").hidden = !!rangeMode; $("rangeCancel").hidden = !rangeMode;
+    $("calHint").textContent = rangeMode ? (rangeMode.first ? "Now tap the last night of the range." : "Tap the first night you'll be away.") : "Tap a night to switch Staying → Away → Custom cost → Staying. Changes apply when you tap Save trip costs.";
+  }
+
+  $("cal").addEventListener("click", e => {
+    const b = e.target.closest("[data-night]"); if (!b) return;
+    const d = b.dataset.night;
+    if (rangeMode){
+      if (!rangeMode.first){ rangeMode.first = d; renderCal(); return; }
+      const [a, z] = [rangeMode.first, d].sort();
+      nightStats($("start").value, $("end").value, {}).list.filter(x => x >= a && x <= z).forEach(x => nightDraft[x] = { s: "away" });
+      rangeMode = null; selNight = null; renderCal(); return;
+    }
+    const m = nightDraft[d];
+    let focusCost = false;
+    if (!m){ nightDraft[d] = { s: "away" }; selNight = null; }
+    else if (m.s === "away"){ nightDraft[d] = { s: "custom", cost: "" }; selNight = d; focusCost = true; }
+    else if (selNight !== d){ selNight = d; focusCost = true; }   // first tap on a custom night opens its cost
+    else { delete nightDraft[d]; selNight = null; }
+    renderCal();
+    if (focusCost){ $("nightCost").value = nightDraft[d].cost ?? ""; $("nightCost").focus(); }
+  });
+  $("nightCost").addEventListener("input", () => {
+    if (!selNight || !nightDraft[selNight]) return;
+    const v = $("nightCost").value.trim();
+    nightDraft[selNight].cost = v === "" ? "" : String(num(v));
+    renderCal();
+  });
+  $("rangeBtn").addEventListener("click", () => { rangeMode = { first: null }; selNight = null; renderCal(); });
+  $("rangeCancel").addEventListener("click", () => { rangeMode = null; renderCal(); });
+  ["start","end","lodgingRate","nights"].forEach(id => $(id).addEventListener("input", renderCal));
+  ["start","end"].forEach(id => $(id).addEventListener("change", renderCal));
   function hasCosts(){ return num(state.flight) || num(state.lodging) || num(state.other); }
 
   function flash(id, msg){ const t = $(id); t.textContent = msg; clearTimeout(t._t); t._t = setTimeout(() => t.textContent = "", 2500); }
@@ -565,6 +690,10 @@ details[open] summary{margin-bottom:14px}
       const v = $(k).value.trim();
       state[k] = (k === "start" || k === "end") ? v : (v === "" ? "" : String(num(v)));
     });
+    // Keep marked nights that still fall inside the (possibly new) trip dates
+    const inTrip = new Set(tripNights(state.start, state.end));
+    state.nightMarks = Object.fromEntries(Object.entries(nightDraft).filter(([d]) => inTrip.has(d)));
+    nightDraft = JSON.parse(JSON.stringify(state.nightMarks)); selNight = null; rangeMode = null;
     persist(); render(); flash("costsToast","Trip costs saved");
     $("costsBox").open = !datesSet();
   });
@@ -623,7 +752,6 @@ details[open] summary{margin-bottom:14px}
   const today = () => iso(new Date());
 
   const nowHHMM = () => { const t = new Date(); return String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0"); };
-  const money = n => Number.isInteger(n) ? fmt(n) : fmt2(n);
   const tallySum = log => r2(log.reduce((t, c) => t + (c.amount == null ? 0 : num(c.amount)), 0));
 
   function renderCounter(){
@@ -805,6 +933,10 @@ details[open] summary{margin-bottom:14px}
       ["Flight", r2(num(state.flight))],
       ["Lodging per night", a.hasRate ? r2(a.rate) : ""],
       ["Nights", a.nights],
+      ["Nights staying", a.nightsAuto],
+      ["Nights away", a.nightsAway],
+      ["Custom nights", a.customNights.map(d => d + " " + money(num(state.nightMarks[d].cost))).join("; ")],
+      ["Custom nights total", r2(a.customSum)],
       ["Lodging total", r2(a.lodgingTotal)],
       ["Chair rent per week", r2(a.chairRate)],
       ["Weeks", a.weeks],
@@ -863,6 +995,11 @@ details[open] summary{margin-bottom:14px}
     ["start","end"].forEach(k => { if (/^\d{4}-\d{2}-\d{2}$/.test(raw[k] ?? "")) out[k] = raw[k]; });
     ["flight","lodging","lodgingRate","nights","chairRent","weeks","other","estFood","estTransport","profitGoal"].forEach(k => {
       if (k in raw) out[k] = String(raw[k] ?? "") === "" ? "" : String(num(raw[k]));
+    });
+    if (raw.nightMarks && typeof raw.nightMarks === "object") Object.entries(raw.nightMarks).forEach(([d, m]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !m || typeof m !== "object") return;
+      if (m.s === "away") out.nightMarks[d] = { s: "away" };
+      else if (m.s === "custom") out.nightMarks[d] = { s: "custom", cost: String(m.cost ?? "") === "" ? "" : String(r2(Math.max(0, num(m.cost)))) };
     });
     Object.entries(raw.days).forEach(([d, v]) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !v || typeof v !== "object") return;
