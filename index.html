@@ -141,6 +141,57 @@ details.cutlist[open] summary{margin-bottom:6px}
 .link.danger{color:var(--red)}
 .sheet-err{color:var(--red);font-size:.9rem;font-weight:600;min-height:1.3em;margin:6px 0 0}
 body.sheet-open{overflow:hidden}
+.sheet.scroll{max-height:86vh;overflow:auto;overscroll-behavior:contain}
+
+/* Month calendar + week by week */
+.mc-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.mc-bar h2{margin:0}
+.mc-nav{display:flex;gap:6px}
+.mc-nav button{width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-size:1.3rem;font-weight:700}
+.mc-nav button:disabled{opacity:.35;cursor:default}
+.mc{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin:0 -8px}
+.mc-wd{font-size:.72rem;font-weight:600;color:var(--muted);text-align:center;padding-bottom:3px}
+.mc-cell{position:relative;overflow:hidden;min-width:0;aspect-ratio:4/5;min-height:0;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);padding:4px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;font-weight:400}
+.mc-fill{position:absolute;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--good) 24%,transparent);pointer-events:none}
+.mc-n{position:relative;font-family:var(--display);font-weight:800;font-size:1.05rem;line-height:1}
+.mc-m{position:relative;display:block;font-size:.7rem;font-weight:700;line-height:1.1;white-space:nowrap}
+.mc-c{position:relative;display:block;font-size:.62rem;color:var(--muted);font-weight:600;line-height:1.1;white-space:nowrap}
+.mc-cell.other{opacity:.4}
+.mc-cell.out{background:transparent;border-color:transparent;opacity:.45;cursor:default}
+.mc-cell.ahead{border-style:dashed;background:transparent}
+.mc-cell.draft{border-style:dashed;border-color:var(--blue)}
+.mc-cell.sel{outline:2px solid var(--ink);outline-offset:1px}
+.mc-week{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;color:var(--muted);padding:2px 4px 8px}
+.mc-week b{font-weight:700}
+.pos{color:var(--good)} .neg{color:var(--red)}
+.wk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.wk-head h2{margin:0}
+.wk-big{font-family:var(--display);font-weight:900;font-size:1.8rem;line-height:1;text-align:right}
+.wk-big small{display:block;font-family:var(--body);font-weight:500;font-size:.78rem;color:var(--muted);margin-top:4px}
+.wk-chart{width:100%;height:auto;display:block}
+.wk-chart text{font-family:var(--body);fill:var(--muted);font-size:10px}
+.wk-chart .val{font-weight:700;font-size:10.5px}
+
+/* Day sheet */
+.ds-sub{color:var(--muted);font-size:.9rem;margin-top:4px}
+.ds-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:4px 0 14px}
+.ds-stat{background:var(--bg);border-radius:12px;padding:10px 12px}
+.ds-stat b{display:block;font-family:var(--display);font-weight:800;font-size:1.6rem;line-height:1.05}
+.ds-stat span{font-size:.8rem;color:var(--muted)}
+.ds-rows{border-top:1px solid var(--line)}
+.ds-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.95rem}
+.ds-row span:first-child{color:var(--muted)}
+.ds-row.total{font-weight:700}
+.ds-row.total span:first-child{color:var(--ink)}
+.ds-cuts h3{font-size:1rem;font-weight:700;margin:18px 0 6px}
+.ds-cut{display:grid;grid-template-columns:48px 62px minmax(0,1fr) 52px;align-items:center;gap:8px;padding:5px 0;font-size:.9rem}
+.ds-cut .k,.ds-cut .t{color:var(--muted)}
+.ds-cut .t{font-size:.82rem}
+.ds-cut .bar{height:10px;border-radius:5px;background:var(--track);overflow:hidden}
+.ds-cut .bar i{display:block;height:100%;background:var(--good);border-radius:5px}
+.ds-cut .a{text-align:right;font-weight:700}
+.ds-warn{background:var(--bg);border-left:3px solid var(--red);border-radius:8px;padding:10px 12px;font-size:.88rem;margin-top:12px}
+.ds-quiet{color:var(--muted);font-size:.92rem;margin:10px 0 0}
 @media (prefers-reduced-motion:reduce){.count-num.bump,.tap.pulse,.sheet{animation:none}.tap{transition:none}}
 
 section.block{background:var(--surface);border-radius:18px;padding:18px;margin-bottom:16px}
@@ -304,6 +355,24 @@ details[open] summary{margin-bottom:14px}
     </div>
   </section>
 
+  <section class="block" aria-label="Calendar">
+    <div class="mc-bar">
+      <h2 id="mcTitle">Calendar</h2>
+      <div class="mc-nav"><button type="button" id="mcPrev" aria-label="Previous month">‹</button><button type="button" id="mcNext" aria-label="Next month">›</button></div>
+    </div>
+    <div class="mc" id="mc"></div>
+  </section>
+
+  <section class="block" id="wkBlock">
+    <div class="wk-head"><h2>Week by week</h2><div class="wk-big" id="wkRun"></div></div>
+    <svg class="wk-chart" id="wkChart" viewBox="0 0 340 196" role="img" aria-label="Weekly profit and running total"></svg>
+    <div class="key">
+      <span><i style="background:var(--good)"></i>Each week's profit</span>
+      <span><i style="background:var(--blue)"></i>Running total</span>
+    </div>
+    <p class="note" id="wkMethod"></p>
+  </section>
+
   <section class="block">
     <h2>Your days</h2>
     <ul class="days" id="days"></ul>
@@ -323,7 +392,7 @@ details[open] summary{margin-bottom:14px}
 </div>
 
 <div class="sheet-back" id="sheetBack" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet" id="priceSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 id="sheetTitle">How much did they pay?</h2><button class="ghost" id="sheetCancel">Cancel</button></div>
     <div class="quick" id="quick"></div>
@@ -333,6 +402,10 @@ details[open] summary{margin-bottom:14px}
     <button class="primary" id="sheetSave">Save</button>
     <div class="sheet-foot"><button class="link" id="sheetSkip">Skip — no amount</button><button class="link danger" id="sheetDelete" hidden>Delete cut</button></div>
   </div>
+</div>
+
+<div class="sheet-back" id="dayBack" hidden>
+  <div class="sheet scroll" id="daySheet" role="dialog" aria-modal="true" aria-labelledby="dsTitle" tabindex="-1"></div>
 </div>
 
 <script>
@@ -533,6 +606,7 @@ details[open] summary{margin-bottom:14px}
     renderChart(a);
     renderDays(a);
     renderCounter();
+    renderMonth();
   }
 
   function renderChart(a){
@@ -850,7 +924,7 @@ details[open] summary{margin-bottom:14px}
     $("sheetBack").hidden = true;
     document.body.classList.remove("sheet-open");
     $("sheetAmt").blur();
-    document.querySelector(".sheet").style.marginBottom = "";
+    $("priceSheet").style.marginBottom = "";
   }
   function commitSheet(amount){
     if (!sheet || sheet.done) return;   // one save per opening, however fast the taps come
@@ -863,7 +937,7 @@ details[open] summary{margin-bottom:14px}
   function fitSheet(){
     const vv = window.visualViewport; if (!vv || !sheet) return;
     const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    document.querySelector(".sheet").style.marginBottom = hidden ? hidden + "px" : "";
+    $("priceSheet").style.marginBottom = hidden ? hidden + "px" : "";
   }
   if (window.visualViewport){ visualViewport.addEventListener("resize", fitSheet); visualViewport.addEventListener("scroll", fitSheet); }
 
@@ -888,8 +962,199 @@ details[open] summary{margin-bottom:14px}
   $("sheetBack").addEventListener("mousedown", e => { if (e.target !== $("sheetAmt")) e.preventDefault(); });
   // Tapping outside cancels, but not in the first moment after opening (stray rapid taps on +1 land here).
   $("sheetBack").addEventListener("click", e => { if (e.target === e.currentTarget && sheet && Date.now() - sheet.openedAt > 500) closeSheet(); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeSheet(); closeDay(); } });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) renderCounter(); });
+
+  // ---------- calendar view ----------
+  // Weeks always run Sunday to Saturday. Day profit = made − food − transport − daily cost, where the
+  // daily cost (that night's lodging + chair rent ÷ 7) counts on every trip day from the first day through
+  // the latest logged day, and the flight + other one-time costs count on the first day.
+  const addDays = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return iso(d); };
+  const dowOf = k => parse(k).getDay();
+  const shortDate = k => parse(k).toLocaleDateString("en-US", {month:"short", day:"numeric"});
+  const signed = n => (Math.round(n) < 0 ? "-" : "+") + fmt(Math.abs(n));
+  const posNeg = n => Math.round(n) < 0 ? "neg" : "pos";
+
+  function calModel(){
+    const t = { first: state.start, last: state.end, flight: num(state.flight), other: num(state.other), rate: num(state.lodgingRate), chairWeek: num(state.chairRent) };
+    if (!t.first || !t.last || t.last < t.first) return null;
+    const days = {};
+    Object.entries(state.days).forEach(([k, v]) => { if (!v.draft) days[k] = v; });
+    const keys = Object.keys(days).sort();
+    const latest = keys.length ? keys[keys.length - 1] : t.first;
+    const chairDay = t.chairWeek / 7;
+    const lodgingFor = k => { const m = state.nightMarks && state.nightMarks[k]; return !m ? t.rate : m.s === "away" ? 0 : num(m.cost); };
+    const counts = k => k >= t.first && k <= t.last && k <= latest;
+    const cost = k => counts(k) ? lodgingFor(k) + chairDay + (k === t.first ? t.flight + t.other : 0) : 0;
+    const profit = k => { const d = days[k]; return (d ? num(d.made) - num(d.food) - num(d.transport) : 0) - cost(k); };
+    const cumMap = {}; let run = 0;
+    for (let x = t.first; x <= t.last; x = addDays(x, 1)){ run += profit(x); cumMap[x] = run; }
+    const cum = k => k < t.first ? 0 : cumMap[k > t.last ? t.last : k];
+    const maxMoney = Math.max(1, ...keys.map(k => num(days[k].made)));
+    const cutDays = Object.keys(state.days).filter(k => (state.days[k].cutLog || []).length).sort();
+    return { t, days, latest, chairDay, lodgingFor, counts, cost, profit, cum, maxMoney, firstCut: cutDays[0] || null };
+  }
+
+  let calMonth = null, calSel = null;
+  function renderMonth(){
+    const M = calModel();
+    const mc = $("mc");
+    if (!M){
+      $("mcTitle").textContent = "Calendar"; $("mcPrev").disabled = $("mcNext").disabled = true;
+      mc.innerHTML = '<p class="empty" style="grid-column:1/-1;margin:0 8px">Set your trip dates to see the calendar.</p>';
+      $("wkBlock").hidden = true;
+      return;
+    }
+    $("wkBlock").hidden = false;
+    const lo = M.t.first.slice(0,7), hi = [M.t.last.slice(0,7), M.latest.slice(0,7)].sort()[1];
+    if (!calMonth || calMonth < lo || calMonth > hi) calMonth = M.latest.slice(0,7);
+    const [y, m] = calMonth.split("-").map(Number);
+    $("mcTitle").textContent = new Date(y, m-1, 1).toLocaleDateString("en-US", {month:"long", year:"numeric"});
+    $("mcPrev").disabled = calMonth <= lo; $("mcNext").disabled = calMonth >= hi;
+    const first = calMonth + "-01", last = iso(new Date(y, m, 0));
+    const start = addDays(first, -dowOf(first)), end = addDays(last, 6 - dowOf(last));
+    let html = ["S","M","T","W","T","F","S"].map(d => `<div class="mc-wd" aria-hidden="true">${d}</div>`).join("");
+    for (let ws = start; ws <= end; ws = addDays(ws, 7)){
+      let weekSum = 0, active = false;
+      for (let i = 0; i < 7; i++){
+        const k = addDays(ws, i), d = M.days[k], raw = state.days[k];
+        const inTrip = k >= M.t.first && k <= M.t.last;
+        if (d || M.counts(k)){ active = true; weekSum += M.profit(k); }
+        const cls = ["mc-cell"];
+        if (k.slice(0,7) !== calMonth) cls.push("other");
+        if (!d && inTrip && k > M.latest) cls.push(raw && raw.draft ? "draft" : "ahead");
+        const out = !d && !inTrip;
+        if (out) cls.push("out");
+        if (k === calSel) cls.push("sel");
+        const fill = d ? Math.max(4, Math.round(num(d.made) / M.maxMoney * 100)) : 0;
+        const label = d ? `${shortDate(k)}, ${fmt(num(d.made))}, ${num(d.cuts)} cuts` : shortDate(k) + (out ? ", outside the trip" : "");
+        html += `<button type="button" class="${cls.join(" ")}" data-k="${k}" aria-label="${label}"${out ? " disabled" : ""}>`
+          + (fill ? `<span class="mc-fill" style="height:${fill}%"></span>` : "")
+          + `<span class="mc-n">${parse(k).getDate()}</span>`
+          + (d ? `<span><span class="mc-m">${fmt(num(d.made))}</span><span class="mc-c">${num(d.cuts)} cut${num(d.cuts) === 1 ? "" : "s"}</span></span>` : "")
+          + `</button>`;
+      }
+      if (active){
+        const run = M.cum(addDays(ws, 6));
+        html += `<div class="mc-week"><span>Week <b class="${posNeg(weekSum)}">${signed(weekSum)}</b></span><span>Running total <b class="${posNeg(run)}">${signed(run)}</b></span></div>`;
+      } else html += `<div class="mc-week" aria-hidden="true"></div>`;
+    }
+    mc.innerHTML = html;
+    renderWeeks(M);
+  }
+
+  function renderWeeks(M){
+    const weeks = [];
+    const stop = M.latest < M.t.last ? M.latest : M.t.last;
+    for (let ws = addDays(M.t.first, -dowOf(M.t.first)); ws <= stop; ws = addDays(ws, 7)){
+      let p = 0; for (let i = 0; i < 7; i++) p += M.profit(addDays(ws, i));
+      weeks.push({ start: ws, profit: p, run: M.cum(addDays(ws, 6)) });
+    }
+    const runNow = M.cum(stop);
+    $("wkRun").innerHTML = `<span class="${posNeg(runNow)}">${signed(runNow)}</span><small>running total</small>`;
+    const svg = $("wkChart");
+    if (!weeks.length){ svg.innerHTML = ""; return; }
+    const W = 340, H = 196, L = 8, R = 8, T = 18, B = 44;
+    const vals = weeks.flatMap(w => [w.profit, w.run]).concat(0);
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+    const yy = v => T + (hi - v) / span * (H - T - B);
+    const slot = (W - L - R) / weeks.length, bw = Math.min(46, slot * .48);
+    let g = `<line x1="${L}" x2="${W-R}" y1="${yy(0)}" y2="${yy(0)}" stroke="var(--line)" stroke-width="1"/>`;
+    const pts = [];
+    weeks.forEach((w, i) => {
+      const cx = L + slot * i + slot / 2;
+      const top = Math.min(yy(0), yy(w.profit)), h = Math.max(2, Math.abs(yy(w.profit) - yy(0)));
+      const col = w.profit < 0 ? "var(--red)" : "var(--good)";
+      g += `<rect x="${cx - bw/2}" y="${top}" width="${bw}" height="${h}" rx="4" fill="${col}" opacity=".85"/>`;
+      g += `<text class="val" x="${cx}" y="${w.profit < 0 ? yy(0) - 5 : top - 5}" text-anchor="middle" style="fill:${col}">${signed(w.profit)}</text>`;
+      g += `<text x="${cx}" y="${H - 8}" text-anchor="middle">Wk of ${shortDate(w.start)}</text>`;
+      pts.push([cx, yy(w.run), w.run]);
+    });
+    if (pts.length > 1) g += `<polyline points="${pts.map(p => p[0] + "," + p[1]).join(" ")}" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    pts.forEach(p => { g += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="var(--surface)" stroke="var(--blue)" stroke-width="2.5"><title>Running total ${signed(p[2])}</title></circle>`; });
+    svg.innerHTML = g;
+    const t = M.t, marked = Object.keys(state.nightMarks || {}).length;
+    $("wkMethod").textContent = `Weeks run Sunday to Saturday. Each day counts ${money(t.rate)} lodging${marked ? " (or that night's away/custom cost)" : ""} and ${fmt2(M.chairDay)} chair rent (${money(t.chairWeek)} a week), plus the food and transport you logged. The flight${t.other ? " and other one-time costs" : ""} count${t.other ? "" : "s"} on ${shortDate(t.first)}. That shows what each week actually earned. The headline number up top is different: it takes off the whole trip's lodging and chair rent up front.`;
+  }
+
+  $("mcPrev").addEventListener("click", () => { const [y, m] = calMonth.split("-").map(Number); calMonth = iso(new Date(y, m-2, 1)).slice(0,7); renderMonth(); });
+  $("mcNext").addEventListener("click", () => { const [y, m] = calMonth.split("-").map(Number); calMonth = iso(new Date(y, m, 1)).slice(0,7); renderMonth(); });
+  $("mc").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (b && !b.disabled) openDay(b.dataset.k); });
+
+  let dayLastFocus = null;
+  function openDay(k){
+    const M = calModel(); if (!M) return;
+    calSel = k; renderMonth();
+    const d = M.days[k], raw = state.days[k], c = M.cost(k), p = M.profit(k), dt = parse(k);
+    const list = ((raw && raw.cutLog) || []).slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+    const hrs = d ? dayHours(d) : null;
+    let h = `<div class="sheet-grab"></div><div class="sheet-head" style="align-items:flex-start"><div><h2 id="dsTitle">${dt.toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric"})}</h2>`
+      + (hrs !== null ? `<div class="ds-sub">${fmtHrs(hrs)}, ${fmtTime(d.inAt)} to ${fmtTime(d.outAt)}</div>` : "")
+      + `</div><button type="button" class="ghost" id="dsClose">Close</button></div>`;
+    if (d){
+      const made = num(d.made), cuts = num(d.cuts);
+      h += `<div class="ds-stats">
+        <div class="ds-stat"><b>${fmt(made)}</b><span>Made</span></div>
+        <div class="ds-stat"><b>${cuts}</b><span>Cuts</span></div>
+        <div class="ds-stat"><b>${cuts ? fmt2(made / cuts) : "—"}</b><span>Per cut</span></div>
+        <div class="ds-stat"><b>${hrs ? fmt2(made / hrs) : "—"}</b><span>Per hour</span></div>
+      </div><div class="ds-rows">
+        <div class="ds-row"><span>Food</span><span>${num(d.food) ? "-" + fmt2(num(d.food)) : "$0"}</span></div>
+        <div class="ds-row"><span>Transport</span><span>${num(d.transport) ? "-" + fmt2(num(d.transport)) : "$0"}</span></div>`;
+      if (c > 0) h += costRows(M, k);
+      h += `<div class="ds-row total"><span>Day profit</span><span class="${posNeg(p)}">${signed(p)}</span></div></div>`;
+      h += `<div class="ds-cuts"><h3>Each cut</h3>`;
+      if (list.length){
+        const mx = Math.max(1, ...list.map(x => num(x.amount)));
+        list.forEach((x, i) => {
+          h += `<div class="ds-cut"><span class="k">Cut ${i+1}</span><span class="t">${x.time ? fmtTime(x.time) : "—"}</span><span class="bar"><i style="width:${x.amount == null ? 0 : Math.round(num(x.amount) / mx * 100)}%"></i></span><span class="a">${x.amount == null ? "—" : money(num(x.amount))}</span></div>`;
+        });
+        const sum = r2(list.reduce((a, x) => a + (x.amount == null ? 0 : num(x.amount)), 0));
+        if (list.length !== cuts || sum !== r2(made)){
+          h += `<div class="ds-warn">The cut log shows ${list.length} cut${list.length === 1 ? "" : "s"} for ${money(sum)}, but the day total says ${cuts} cut${cuts === 1 ? "" : "s"} for ${money(r2(made))}.`
+            + (raw.madeManual ? ` Money made for this day was typed by hand in Log a day, so it doesn't follow the cut log.` : "")
+            + (list.length < cuts ? ` ${cuts - list.length} cut${cuts - list.length === 1 ? " was" : "s were"} counted without a price entry.` : "")
+            + ` Check which one is right in Log a day.</div>`;
+        }
+      } else if (M.firstCut && k < M.firstCut){
+        h += `<p class="ds-quiet">Prices for each cut weren't logged this day. Cut-by-cut prices start ${shortDate(M.firstCut)}.</p>`;
+      } else {
+        h += `<p class="ds-quiet">No cut-by-cut prices were logged for this day.</p>`;
+      }
+      h += `</div>`;
+    } else if (raw && raw.draft){
+      h += `<p class="ds-quiet">In progress: ${num(raw.cuts)} cut${num(raw.cuts) === 1 ? "" : "s"} counted, ${money(num(raw.made))} so far. Save the day in Log a day to add it to the numbers.</p>`;
+      if (list.length) h += `<div class="ds-cuts"><h3>Each cut</h3>` + list.map((x, i) => `<div class="ds-cut"><span class="k">Cut ${i+1}</span><span class="t">${x.time ? fmtTime(x.time) : "—"}</span><span class="bar"><i style="width:${x.amount == null ? 0 : Math.round(num(x.amount) / Math.max(1, ...list.map(z => num(z.amount))) * 100)}%"></i></span><span class="a">${x.amount == null ? "—" : money(num(x.amount))}</span></div>`).join("") + `</div>`;
+    } else if (c > 0){
+      h += `<p class="ds-quiet">Nothing logged. Lodging and chair rent still count for this day:</p><div class="ds-rows" style="margin-top:8px">${costRows(M, k)}<div class="ds-row total"><span>Day profit</span><span class="${posNeg(p)}">${signed(p)}</span></div></div>`;
+    } else if (k >= M.t.first && k <= M.t.last){
+      h += `<p class="ds-quiet">Still to come on this trip.</p>`;
+    } else {
+      h += `<p class="ds-quiet">Outside the trip dates.</p>`;
+    }
+    $("daySheet").innerHTML = h;
+    dayLastFocus = document.activeElement;
+    $("dayBack").hidden = false; document.body.classList.add("sheet-open");
+    $("dsClose").addEventListener("click", closeDay);
+    $("daySheet").scrollTop = 0; $("daySheet").focus();
+  }
+  function costRows(M, k){
+    const lod = M.lodgingFor(k), mk = state.nightMarks && state.nightMarks[k];
+    let h = `<div class="ds-row"><span>Lodging${mk ? (mk.s === "away" ? " (away)" : " (custom)") : ""}</span><span>${lod ? "-" + fmt2(lod) : "$0"}</span></div>`
+      + `<div class="ds-row"><span>Chair rent</span><span>${M.chairDay ? "-" + fmt2(M.chairDay) : "$0"}</span></div>`;
+    if (k === M.t.first){
+      if (M.t.flight) h += `<div class="ds-row"><span>Flight</span><span>-${fmt2(M.t.flight)}</span></div>`;
+      if (M.t.other) h += `<div class="ds-row"><span>Other one-time costs</span><span>-${fmt2(M.t.other)}</span></div>`;
+    }
+    return h;
+  }
+  function closeDay(){
+    if ($("dayBack").hidden) return;
+    $("dayBack").hidden = true; document.body.classList.remove("sheet-open");
+    calSel = null; renderMonth();
+    if (dayLastFocus && dayLastFocus.dataset && dayLastFocus.dataset.k){ const el = document.querySelector(`.mc-cell[data-k="${dayLastFocus.dataset.k}"]`); if (el) el.focus(); }
+  }
+  $("dayBack").addEventListener("click", e => { if (e.target === e.currentTarget) closeDay(); });
 
   // ---------- backup ----------
   // items: [{name, type, text}]
